@@ -1,41 +1,76 @@
 const db = require('../db');
 
+const GOAL_CONFIG = {
+  1: { steps: 5000, bonus: 0.10 },
+  2: { steps: 7500, bonus: 0.20 },
+  3: { steps: 10000, bonus: 0.30 },
+  4: { steps: 12500, bonus: 0.40 }
+};
+
 async function syncSteps(req, res) {
   try {
-    const { user_id, steps_to_add, sync_from_date, sync_to_date } = req.body;
+    const { 
+      user_id, 
+      steps_to_add, 
+      current_goal_level,
+      bonus_process_days,  // или days, если хотите оставить
+      sync_from_date, 
+      sync_to_date 
+    } = req.body;
 
-    if (!user_id || steps_to_add === undefined || steps_to_add === null || !sync_from_date || !sync_to_date) {
+    if (!user_id || steps_to_add === undefined || steps_to_add === null || 
+        !sync_from_date || !sync_to_date || !current_goal_level) {
       return res.status(400).json({ 
         error: 'Отсутствуют обязательные поля',
-        required: ['user_id', 'steps_to_add', 'sync_from_date', 'sync_to_date']
+        required: ['user_id', 'steps_to_add', 'current_goal_level', 'sync_from_date', 'sync_to_date']
       });
     }
 
     await ensureUserExists(user_id);
 
-    if (steps_to_add === 0) {
+    // Обновить goal_level если изменился
+    await updateGoalLevel(user_id, current_goal_level);
+
+    let bonusXPEarned = 0;
+
+    if (steps_to_add === 0 && (!bonus_process_days || bonus_process_days.length === 0)) {
       const progress = await getCurrentProgress(user_id);
       return res.json(progress);
     }
 
-    const isDuplicate = await checkDuplicate(user_id, sync_to_date);
-    if (isDuplicate) {
-      return res.status(409).json({ 
-        error: 'Этот период уже синхронизирован'
-      });
+    // Обработка базовых шагов
+    if (steps_to_add > 0) {
+      const isDuplicate = await checkDuplicate(user_id, sync_to_date);
+      if (isDuplicate) {
+        return res.status(409).json({ 
+          error: 'Этот период уже синхронизирован'
+        });
+      }
+
+      const isValid = validateSteps(steps_to_add, sync_from_date, sync_to_date);
+      if (!isValid) {
+        return res.status(400).json({ 
+          error: 'Нереальное количество шагов для данного периода'
+        });
+      }
+
+      await addXP(user_id, steps_to_add, sync_to_date);
     }
 
-    const isValid = validateSteps(steps_to_add, sync_from_date, sync_to_date);
-    if (!isValid) {
-      return res.status(400).json({ 
-        error: 'Нереальное количество шагов для данного периода'
-      });
+    // Обработка бонусов за завершенные дни
+    if (bonus_process_days && bonus_process_days.length > 0) {
+      bonusXPEarned = await processBonusDays(user_id, bonus_process_days, current_goal_level);
     }
 
-    const result = await addXP(user_id, steps_to_add, sync_to_date);
+    // Сохранение истории
     await saveSyncHistory(user_id, steps_to_add, sync_from_date, sync_to_date);
 
+    // Финальный результат
+    const result = await getFinalProgress(user_id);
+    result.bonus_xp_earned = bonusXPEarned;
+
     res.json(result);
+
   } catch (error) {
     console.error('Ошибка в syncSteps:', error);
     res.status(500).json({ 
@@ -45,7 +80,44 @@ async function syncSteps(req, res) {
   }
 }
 
-async function getCurrentProgress(userId) {
+async function processBonusDays(userId, bonusDays, goalLevel) {
+  const goalConfig = GOAL_CONFIG[goalLevel];
+  if (!goalConfig) {
+    throw new Error(`Неверный goal_level: ${goalLevel}`);
+  }
+
+  let totalBonusXP = 0;
+
+  for (const day of bonusDays) {
+    const { date, steps } = day;
+
+    if (steps >= goalConfig.steps) {
+      const bonusXP = Math.floor(steps * goalConfig.bonus);
+      
+      await db.query(
+        'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
+        [bonusXP, userId]
+      );
+
+      totalBonusXP += bonusXP;
+    }
+  }
+
+  return totalBonusXP;
+}
+
+async function updateGoalLevel(userId, goalLevel) {
+  if (goalLevel < 1 || goalLevel > 4) {
+    throw new Error(`Неверный goal_level: ${goalLevel}. Допустимые значения: 1-4`);
+  }
+
+  await db.query(
+    'UPDATE user_progress SET goal_level = $1 WHERE user_id = $2',
+    [goalLevel, userId]
+  );
+}
+
+async function getFinalProgress(userId) {
   const result = await db.query(
     'SELECT total_steps, total_xp, current_level FROM user_progress WHERE user_id = $1',
     [userId]
@@ -61,14 +133,30 @@ async function getCurrentProgress(userId) {
   }
 
   const user = result.rows[0];
-  const xpToNext = user.current_level * 10000 - user.total_xp;
+  const totalXP = parseInt(user.total_xp);
+  
+  // Вычисляем уровень и прогресс
+  let level = 1;
+  let accumulated = 0;
+  
+  while (accumulated + (level * 10000) <= totalXP) {
+    accumulated += level * 10000;
+    level++;
+  }
+
+  const currentXP = totalXP - accumulated;
+  const xpToNext = level * 10000;
 
   return {
     total_steps: parseInt(user.total_steps),
-    current_xp: parseInt(user.total_xp),
-    current_level: user.current_level,
+    current_xp: currentXP,
+    current_level: level,
     xp_to_next_level: xpToNext
   };
+}
+
+async function getCurrentProgress(userId) {
+  return await getFinalProgress(userId);
 }
 
 async function ensureUserExists(userId) {
@@ -80,8 +168,8 @@ async function ensureUserExists(userId) {
   if (userCheck.rows.length === 0) {
     await db.query('INSERT INTO users (id) VALUES ($1)', [userId]);
     await db.query(
-      'INSERT INTO user_progress (user_id) VALUES ($1)',
-      [userId]
+      'INSERT INTO user_progress (user_id, goal_level) VALUES ($1, $2)',
+      [userId, 3]
     );
     console.log('Новый пользователь создан:', userId);
   }
@@ -110,27 +198,15 @@ function validateSteps(steps, fromDate, toDate) {
 }
 
 async function addXP(userId, stepsToAdd, syncToDate) {
-  const result = await db.query(`
+  await db.query(`
     UPDATE user_progress 
     SET 
       total_steps = total_steps + $1,
       total_xp = total_xp + $1,
-      current_level = FLOOR((total_xp + $1) / 10000) + 1,
       last_sync_date = $2,
       updated_at = NOW()
     WHERE user_id = $3
-    RETURNING total_steps, total_xp, current_level
   `, [stepsToAdd, syncToDate, userId]);
-
-  const user = result.rows[0];
-  const xpToNext = user.current_level * 10000 - user.total_xp;
-
-  return {
-    total_steps: parseInt(user.total_steps),
-    current_xp: parseInt(user.total_xp),
-    current_level: user.current_level,
-    xp_to_next_level: xpToNext
-  };
 }
 
 async function saveSyncHistory(userId, stepsAdded, fromDate, toDate) {
