@@ -6,22 +6,22 @@ const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/ima
 
 // URL картинок персонажей для каждого уровня
 const CHARACTER_IMAGES = {
-  1: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  2: `${CLOUDINARY_BASE}/dimash_jqovdc.png`,  // ⬅️ Новая картинка для Level 2!
-  3: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  4: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  5: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  6: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  7: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  8: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  9: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
-  10: `${CLOUDINARY_BASE}/raccoon_hkagyw.png`,
+  1: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  2: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  3: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  4: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  5: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  6: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  7: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  8: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  9: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  10: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
 };
 
 // Имена персонажей для каждого уровня
 const CHARACTER_NAMES = {
   1: 'Beginner Raccoon',
-  2: 'Dimash Hero',          // ⬅️ Обновленное имя для Level 2
+  2: 'Walking Raccoon',
   3: 'Running Raccoon',
   4: 'Speedy Raccoon',
   5: 'Flying Raccoon',
