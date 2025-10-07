@@ -1,4 +1,5 @@
 const db = require('../db');
+const { getCharacterData } = require('../config/characters');
 
 const GOAL_CONFIG = {
   1: { steps: 5000, bonus: 0.10 },
@@ -138,11 +139,13 @@ async function getFinalProgress(userId) {
   );
 
   if (result.rows.length === 0) {
+    const characterData = getCharacterData(1);
     return {
       total_steps: 0,
       current_xp: 0,
       current_level: 1,
-      xp_to_next_level: 10000
+      xp_to_next_level: 10000,
+      character_image_url: characterData.image_url
     };
   }
 
@@ -161,11 +164,14 @@ async function getFinalProgress(userId) {
   const currentXP = totalXP - accumulated;
   const xpToNext = level * 10000;
 
+  const characterData = getCharacterData(level);
+
   return {
     total_steps: parseInt(user.total_steps),
     current_xp: currentXP,
     current_level: level,
-    xp_to_next_level: xpToNext
+    xp_to_next_level: xpToNext,
+    character_image_url: characterData.image_url
   };
 }
 
