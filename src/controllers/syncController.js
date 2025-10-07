@@ -13,7 +13,7 @@ async function syncSteps(req, res) {
       user_id, 
       steps_to_add, 
       current_goal_level,
-      bonus_process_days,  // или days, если хотите оставить
+      bonus_process_days,
       sync_from_date, 
       sync_to_date 
     } = req.body;
@@ -28,14 +28,24 @@ async function syncSteps(req, res) {
 
     await ensureUserExists(user_id);
 
+    // Получить состояние ДО изменений
+    const previousProgress = await getCurrentProgress(user_id);
+    const previousXP = previousProgress.current_xp;
+
     // Обновить goal_level если изменился
     await updateGoalLevel(user_id, current_goal_level);
 
     let bonusXPEarned = 0;
+    let totalXPGained = 0;
 
     if (steps_to_add === 0 && (!bonus_process_days || bonus_process_days.length === 0)) {
       const progress = await getCurrentProgress(user_id);
-      return res.json(progress);
+      return res.json({
+        ...progress,
+        previous_xp: previousXP,
+        bonus_xp_earned: 0,
+        xp_gained: 0
+      });
     }
 
     // Обработка базовых шагов
@@ -55,11 +65,13 @@ async function syncSteps(req, res) {
       }
 
       await addXP(user_id, steps_to_add, sync_to_date);
+      totalXPGained += steps_to_add;
     }
 
     // Обработка бонусов за завершенные дни
     if (bonus_process_days && bonus_process_days.length > 0) {
       bonusXPEarned = await processBonusDays(user_id, bonus_process_days, current_goal_level);
+      totalXPGained += bonusXPEarned;
     }
 
     // Сохранение истории
@@ -67,7 +79,9 @@ async function syncSteps(req, res) {
 
     // Финальный результат
     const result = await getFinalProgress(user_id);
+    result.previous_xp = previousXP;
     result.bonus_xp_earned = bonusXPEarned;
+    result.xp_gained = totalXPGained;
 
     res.json(result);
 
