@@ -1,12 +1,11 @@
 const db = require('../db');
 const { getCharacterData } = require('../config/characters');
-
-const GOAL_CONFIG = {
-  1: { steps: 5000, bonus: 0.10 },
-  2: { steps: 7500, bonus: 0.20 },
-  3: { steps: 10000, bonus: 0.30 },
-  4: { steps: 12500, bonus: 0.40 }
-};
+const { 
+  saveDailyStep, 
+  calculateCurrentStreak, 
+  calculateLongestStreak,
+  GOAL_CONFIG 
+} = require('../helpers/dailySteps');
 
 async function syncSteps(req, res) {
   try {
@@ -14,7 +13,7 @@ async function syncSteps(req, res) {
       user_id, 
       steps_to_add, 
       current_goal_level,
-      bonus_process_days,
+      completed_days,  // ← переименовали с bonus_process_days
       sync_from_date, 
       sync_to_date 
     } = req.body;
@@ -39,7 +38,7 @@ async function syncSteps(req, res) {
     let bonusXPEarned = 0;
     let totalXPGained = 0;
 
-    if (steps_to_add === 0 && (!bonus_process_days || bonus_process_days.length === 0)) {
+    if (steps_to_add === 0 && (!completed_days || completed_days.length === 0)) {
       const progress = await getCurrentProgress(user_id);
       return res.json({
         ...progress,
@@ -69,16 +68,16 @@ async function syncSteps(req, res) {
       totalXPGained += steps_to_add;
     }
 
-    // Обработка бонусов за завершенные дни
-    if (bonus_process_days && bonus_process_days.length > 0) {
-      bonusXPEarned = await processBonusDays(user_id, bonus_process_days, current_goal_level);
+    // Обработка завершенных дней (сохранение + бонусы)
+    if (completed_days && completed_days.length > 0) {
+      bonusXPEarned = await processCompletedDays(user_id, completed_days);
       totalXPGained += bonusXPEarned;
     }
 
     // Сохранение истории
     await saveSyncHistory(user_id, steps_to_add, sync_from_date, sync_to_date);
 
-    // Финальный результат
+    // Финальный результат (теперь с streak)
     const result = await getFinalProgress(user_id);
     result.previous_xp = previousXP;
     result.bonus_xp_earned = bonusXPEarned;
@@ -95,19 +94,28 @@ async function syncSteps(req, res) {
   }
 }
 
-async function processBonusDays(userId, bonusDays, goalLevel) {
-  const goalConfig = GOAL_CONFIG[goalLevel];
-  if (!goalConfig) {
-    throw new Error(`Неверный goal_level: ${goalLevel}`);
-  }
-
+/**
+ * Обработка завершенных дней: сохранение в БД + начисление бонусов
+ */
+async function processCompletedDays(userId, completedDays) {
   let totalBonusXP = 0;
 
-  for (const day of bonusDays) {
-    const { date, steps } = day;
+  for (const day of completedDays) {
+    const { date, steps, goal_level } = day;
 
-    if (steps >= goalConfig.steps) {
-      const bonusXP = Math.floor(steps * goalConfig.bonus);
+    // Валидация goal_level
+    if (!GOAL_CONFIG[goal_level]) {
+      console.warn(`Неверный goal_level: ${goal_level} для дня ${date}`);
+      continue;
+    }
+
+    // 1. Сохраняем день в daily_steps
+    const savedDay = await saveDailyStep(userId, day);
+    
+    // 2. Начисляем бонус только если день был сохранен (не дубликат)
+    //    И только если цель выполнена
+    if (savedDay && savedDay.is_goal_completed) {
+      const bonusXP = Math.floor(steps * GOAL_CONFIG[goal_level].bonus);
       
       await db.query(
         'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
@@ -115,6 +123,11 @@ async function processBonusDays(userId, bonusDays, goalLevel) {
       );
 
       totalBonusXP += bonusXP;
+      console.log(`Бонус начислен за ${date}: ${bonusXP} XP`);
+    } else if (!savedDay) {
+      console.log(`День ${date} уже был обработан ранее (дубликат)`);
+    } else if (!savedDay.is_goal_completed) {
+      console.log(`День ${date}: цель не выполнена, бонус не начислен`);
     }
   }
 
@@ -145,7 +158,9 @@ async function getFinalProgress(userId) {
       current_xp: 0,
       current_level: 1,
       xp_to_next_level: 10000,
-      character_image_url: characterData.image_url
+      character_image_url: characterData.image_url,
+      current_streak: 0,
+      longest_streak: 0
     };
   }
 
@@ -166,12 +181,18 @@ async function getFinalProgress(userId) {
 
   const characterData = getCharacterData(level);
 
+  // Подсчет streak
+  const currentStreak = await calculateCurrentStreak(userId);
+  const longestStreak = await calculateLongestStreak(userId);
+
   return {
     total_steps: parseInt(user.total_steps),
     current_xp: currentXP,
     current_level: level,
     xp_to_next_level: xpToNext,
-    character_image_url: characterData.image_url
+    character_image_url: characterData.image_url,
+    current_streak: currentStreak,
+    longest_streak: longestStreak
   };
 }
 
