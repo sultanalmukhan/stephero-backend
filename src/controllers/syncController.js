@@ -5,7 +5,8 @@ const {
   calculateCurrentStreak, 
   calculateLongestStreak,
   GOAL_CONFIG 
-} = require('../helpers/dailySteps');
+} = require('../helpers/dailySteps'); 
+
 
 async function syncSteps(req, res) {
   try {
