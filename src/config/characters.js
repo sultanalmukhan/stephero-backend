@@ -3,6 +3,7 @@
 
 const CLOUDINARY_CLOUD_NAME = 'dvfelpkla';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+const CLOUDINARY_VIDEO_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload`;
 
 // URL картинок персонажей для каждого уровня
 const CHARACTER_IMAGES = {
@@ -16,6 +17,20 @@ const CHARACTER_IMAGES = {
   8: `${CLOUDINARY_BASE}/home_8_acngml.png`,
   9: `${CLOUDINARY_BASE}/home_9_joecf5.png`,
   10: `${CLOUDINARY_BASE}/home_10_oad4ii.png`,
+};
+
+// 🎞️ URL анимаций персонажей для каждого уровня
+const CHARACTER_ANIMATIONS = {
+  1: `${CLOUDINARY_VIDEO_BASE}/v1760020443/animation_1_qh2qte.mp4`,
+  2: `${CLOUDINARY_VIDEO_BASE}/v1760020529/animation_2_bprbne.mp4`,
+  3: `${CLOUDINARY_VIDEO_BASE}/v1760020529/animation_3_maa7fc.mp4`,
+  4: `${CLOUDINARY_VIDEO_BASE}/v1760020530/animation_4_tvo9qu.mp4`,
+  5: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_5_ju8rje.mp4`,
+  6: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_6_fatp3t.mp4`,
+  7: `${CLOUDINARY_VIDEO_BASE}/v1760020533/animation_7_aha0sp.mp4`,
+  8: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_8_oajcso.mp4`,
+  9: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_9_imhxuu.mp4`,
+  10: `${CLOUDINARY_VIDEO_BASE}/v1760020533/animation_10_blkmjk.mp4`,
 };
 
 // Имена персонажей для каждого уровня
@@ -39,9 +54,10 @@ const CHARACTER_NAMES = {
  */
 function getCharacterData(level) {
   const defaultLevel = 1;
-  
+
   return {
     image_url: CHARACTER_IMAGES[level] || CHARACTER_IMAGES[defaultLevel],
+    animation_url: CHARACTER_ANIMATIONS[level] || CHARACTER_ANIMATIONS[defaultLevel],
     name: CHARACTER_NAMES[level] || CHARACTER_NAMES[defaultLevel],
     level: level
   };
@@ -50,6 +66,7 @@ function getCharacterData(level) {
 module.exports = {
   getCharacterData,
   CHARACTER_IMAGES,
+  CHARACTER_ANIMATIONS,
   CHARACTER_NAMES,
   CLOUDINARY_CLOUD_NAME
 };
