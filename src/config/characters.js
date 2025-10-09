@@ -6,16 +6,16 @@ const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/ima
 
 // URL картинок персонажей для каждого уровня
 const CHARACTER_IMAGES = {
-  1: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  2: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  3: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  4: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  5: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  6: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  7: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  8: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  9: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
-  10: `${CLOUDINARY_BASE}/raccoon_2_atxtv1.png`,
+  1: `${CLOUDINARY_BASE}/home_1_huzth0.png`,
+  2: `${CLOUDINARY_BASE}/home_2_oxfuh9.png`,
+  3: `${CLOUDINARY_BASE}/home_3_ksufad.png`,
+  4: `${CLOUDINARY_BASE}/home_4_qfz1ee.png`,
+  5: `${CLOUDINARY_BASE}/home_5_g8ukuy.png`,
+  6: `${CLOUDINARY_BASE}/home_6_dym98o.png`,
+  7: `${CLOUDINARY_BASE}/home_7_m7glsf.png`,
+  8: `${CLOUDINARY_BASE}/home_8_acngml.png`,
+  9: `${CLOUDINARY_BASE}/home_9_joecf5.png`,
+  10: `${CLOUDINARY_BASE}/home_10_oad4ii.png`,
 };
 
 // Имена персонажей для каждого уровня
