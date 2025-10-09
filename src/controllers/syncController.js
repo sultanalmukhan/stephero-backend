@@ -13,7 +13,7 @@ async function syncSteps(req, res) {
       user_id, 
       steps_to_add, 
       current_goal_level,
-      completed_days,  // ← переименовали с bonus_process_days
+      completed_days,  // ← переименовано с bonus_process_days
       sync_from_date, 
       sync_to_date 
     } = req.body;
@@ -38,6 +38,7 @@ async function syncSteps(req, res) {
     let bonusXPEarned = 0;
     let totalXPGained = 0;
 
+    // Нет шагов и завершённых дней — просто вернуть текущее состояние
     if (steps_to_add === 0 && (!completed_days || completed_days.length === 0)) {
       const progress = await getCurrentProgress(user_id);
       return res.json({
@@ -74,10 +75,10 @@ async function syncSteps(req, res) {
       totalXPGained += bonusXPEarned;
     }
 
-    // Сохранение истории
+    // Сохранение истории синхронизации
     await saveSyncHistory(user_id, steps_to_add, sync_from_date, sync_to_date);
 
-    // Финальный результат (теперь с streak)
+    // Финальный результат (с учетом streak)
     const result = await getFinalProgress(user_id);
     result.previous_xp = previousXP;
     result.bonus_xp_earned = bonusXPEarned;
@@ -123,11 +124,11 @@ async function processCompletedDays(userId, completedDays) {
       );
 
       totalBonusXP += bonusXP;
-      console.log(`Бонус начислен за ${date}: ${bonusXP} XP`);
+      console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
     } else if (!savedDay) {
-      console.log(`День ${date} уже был обработан ранее (дубликат)`);
+      console.log(`ℹ️ День ${date} уже был обработан ранее (дубликат)`);
     } else if (!savedDay.is_goal_completed) {
-      console.log(`День ${date}: цель не выполнена, бонус не начислен`);
+      console.log(`ℹ️ День ${date}: цель не выполнена, бонус не начислен`);
     }
   }
 
@@ -145,6 +146,9 @@ async function updateGoalLevel(userId, goalLevel) {
   );
 }
 
+/**
+ * Возвращает финальный прогресс с уровнем, XP, streak и ссылками на персонажа
+ */
 async function getFinalProgress(userId) {
   const result = await db.query(
     'SELECT total_steps, total_xp, current_level FROM user_progress WHERE user_id = $1',
@@ -159,6 +163,7 @@ async function getFinalProgress(userId) {
       current_level: 1,
       xp_to_next_level: 10000,
       character_image_url: characterData.image_url,
+      character_animation_url: characterData.animation_url,
       current_streak: 0,
       longest_streak: 0
     };
@@ -191,6 +196,7 @@ async function getFinalProgress(userId) {
     current_level: level,
     xp_to_next_level: xpToNext,
     character_image_url: characterData.image_url,
+    character_animation_url: characterData.animation_url, // 🆕 добавлено
     current_streak: currentStreak,
     longest_streak: longestStreak
   };
@@ -212,7 +218,7 @@ async function ensureUserExists(userId) {
       'INSERT INTO user_progress (user_id, goal_level) VALUES ($1, $2)',
       [userId, 3]
     );
-    console.log('Новый пользователь создан:', userId);
+    console.log('✅ Новый пользователь создан:', userId);
   }
 }
 
