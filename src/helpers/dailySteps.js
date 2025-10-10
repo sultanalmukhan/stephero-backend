@@ -47,12 +47,12 @@ async function saveDailyStep(userId, dayData) {
     const result = await db.query(query, [
       userId,
       date,
-      steps,
-      goal_level,
-      stepsGoal,
-      is_goal_completed,
-      is_streak_completed,
-      is_finalized
+      parseInt(steps),                    // ✅ Явное приведение к integer
+      parseInt(goal_level),               // ✅ Явное приведение к integer
+      parseInt(stepsGoal),                // ✅ Явное приведение к integer
+      Boolean(is_goal_completed),         // ✅ Явное приведение к boolean
+      Boolean(is_streak_completed),       // ✅ Явное приведение к boolean
+      Boolean(is_finalized)               // ✅ Явное приведение к boolean
     ]);
     
     return result.rows[0];
