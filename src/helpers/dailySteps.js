@@ -8,8 +8,13 @@ const GOAL_CONFIG = {
 };
 
 // ✅ HELPER: Парсинг даты в UTC для избежания timezone проблем
-function parseUTCDate(dateString) {
-  const [year, month, day] = dateString.split('-').map(Number);
+function parseUTCDate(dateInput) {
+  // Если уже Date объект - используем его
+  if (dateInput instanceof Date) {
+    return new Date(Date.UTC(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate()));
+  }
+  // Если строка - парсим
+  const [year, month, day] = dateInput.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day));
 }
 
@@ -40,20 +45,25 @@ async function saveDailyStep(userId, dayData) {
     const query = `
       INSERT INTO daily_steps 
         (user_id, date, steps, goal_level, steps_goal, is_goal_completed, is_streak_completed, is_finalized)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6::boolean, $7::boolean, $8::boolean)
       RETURNING *
     `;
     
-    const result = await db.query(query, [
+    // ✅ Явное приведение типов
+    const params = [
       userId,
       date,
-      parseInt(steps),                    // ✅ Явное приведение к integer
-      parseInt(goal_level),               // ✅ Явное приведение к integer
-      parseInt(stepsGoal),                // ✅ Явное приведение к integer
-      Boolean(is_goal_completed),         // ✅ Явное приведение к boolean
-      Boolean(is_streak_completed),       // ✅ Явное приведение к boolean
-      Boolean(is_finalized)               // ✅ Явное приведение к boolean
-    ]);
+      parseInt(steps),
+      parseInt(goal_level),
+      parseInt(stepsGoal),
+      is_goal_completed ? true : false,
+      is_streak_completed ? true : false,
+      is_finalized ? true : false
+    ];
+    
+    console.log('💾 saveDailyStep params:', params);
+    
+    const result = await db.query(query, params);
     
     return result.rows[0];
   } catch (error) {
@@ -151,14 +161,16 @@ async function calculateCurrentStreak(userId) {
     
     // Если сегодня еще нет записи, начинаем со вчера
     const today = formatUTCDate(expectedDate);
-    const firstDayStr = days[0].date;
+    const firstDayStr = days[0].date instanceof Date 
+      ? formatUTCDate(days[0].date) 
+      : days[0].date; // ✅ Проверка типа
     
     if (firstDayStr !== today) {
       expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
     }
     
     for (const day of days) {
-      // ✅ Парсим дату в UTC
+      // ✅ Парсим дату (может быть строкой или Date объектом)
       const dayDate = parseUTCDate(day.date);
       const dayStr = formatUTCDate(dayDate);
       const expectedStr = formatUTCDate(expectedDate);
@@ -218,7 +230,7 @@ async function calculateLongestStreak(userId) {
     let prevDate = null;
     
     for (const day of days) {
-      // ✅ Парсим дату в UTC
+      // ✅ Парсим дату (может быть строкой или Date объектом)
       const currentDate = parseUTCDate(day.date);
       
       if (prevDate) {
