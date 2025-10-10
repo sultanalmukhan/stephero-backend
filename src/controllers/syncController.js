@@ -1,366 +1,258 @@
 const db = require('../db');
-const { getCharacterData } = require('../config/characters');
-const { 
-  saveDailyStep,
-  updateDailyStep,
-  calculateCurrentStreak, 
-  calculateLongestStreak,
-  GOAL_CONFIG 
-} = require('../helpers/dailySteps');
 
-async function syncSteps(req, res) {
+const GOAL_CONFIG = {
+  1: { steps: 5000, bonus: 0.10 },
+  2: { steps: 7500, bonus: 0.20 },
+  3: { steps: 10000, bonus: 0.30 },
+  4: { steps: 12500, bonus: 0.40 }
+};
+
+// ✅ HELPER: Парсинг даты в UTC для избежания timezone проблем
+function parseUTCDate(dateString) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+// ✅ HELPER: Форматирование даты в yyyy-MM-dd
+function formatUTCDate(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Сохранить день в базу (для новых дней)
+ */
+async function saveDailyStep(userId, dayData) {
+  const { 
+    date, 
+    steps, 
+    goal_level, 
+    is_goal_completed, 
+    is_streak_completed,
+    is_finalized 
+  } = dayData;
+  
+  const stepsGoal = GOAL_CONFIG[goal_level].steps;
+  
   try {
-    const { 
-      user_id, 
-      current_goal_level,
-      completed_days,
-    } = req.body;
+    const query = `
+      INSERT INTO daily_steps 
+        (user_id, date, steps, goal_level, steps_goal, is_goal_completed, is_streak_completed, is_finalized)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
+    
+    const result = await db.query(query, [
+      userId,
+      date,
+      steps,
+      goal_level,
+      stepsGoal,
+      is_goal_completed,
+      is_streak_completed,
+      is_finalized
+    ]);
+    
+    return result.rows[0];
+  } catch (error) {
+    console.error('Ошибка при сохранении daily_step:', error);
+    throw error;
+  }
+}
 
-    // Валидация
-    if (!user_id || !current_goal_level || !completed_days || completed_days.length === 0) {
-      return res.status(400).json({ 
-        error: 'Отсутствуют обязательные поля',
-        required: ['user_id', 'current_goal_level', 'completed_days']
-      });
+/**
+ * Обновить существующий день (для обновления сегодняшнего дня или финализации)
+ */
+async function updateDailyStep(userId, date, updates) {
+  const { 
+    steps, 
+    is_goal_completed, 
+    is_streak_completed, 
+    is_finalized 
+  } = updates;
+  
+  try {
+    // Обновляем только переданные поля
+    const setClauses = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (steps !== undefined) {
+      setClauses.push(`steps = $${paramIndex}`);
+      values.push(steps);
+      paramIndex++;
     }
 
-    // Создать пользователя если не существует
-    await ensureUserExists(user_id);
+    if (is_goal_completed !== undefined) {
+      setClauses.push(`is_goal_completed = $${paramIndex}`);
+      values.push(is_goal_completed);
+      paramIndex++;
+    }
 
-    // Получить состояние ДО изменений
-    const previousProgress = await getCurrentProgress(user_id);
-    const previousXP = previousProgress.current_xp;
+    if (is_streak_completed !== undefined) {
+      setClauses.push(`is_streak_completed = $${paramIndex}`);
+      values.push(is_streak_completed);
+      paramIndex++;
+    }
 
-    // Обновить goal_level если изменился
-    await updateGoalLevel(user_id, current_goal_level);
+    if (is_finalized !== undefined) {
+      setClauses.push(`is_finalized = $${paramIndex}`);
+      values.push(is_finalized);
+      paramIndex++;
+    }
 
-    // Разделяем массив: последний = сегодня, остальные = previousDays
-    const today = completed_days[completed_days.length - 1];
-    const previousDays = completed_days.slice(0, -1);
+    setClauses.push(`updated_at = NOW()`);
 
-    let totalXPGained = 0;
-    let bonusXPEarned = 0;
-    const bonusDetails = [];
+    values.push(userId, date);
 
-    // 1. Обработка завершенных дней (все кроме последнего)
-    for (const day of previousDays) {
-      const result = await processPreviousDay(user_id, day);
-      totalXPGained += result.xpGained;
-      bonusXPEarned += result.bonusXP;
+    const query = `
+      UPDATE daily_steps 
+      SET ${setClauses.join(', ')}
+      WHERE user_id = $${paramIndex} AND date = $${paramIndex + 1}
+      RETURNING *
+    `;
+    
+    const result = await db.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Ошибка при обновлении daily_step:', error);
+    throw error;
+  }
+}
+
+/**
+ * Подсчет текущего streak (дней подряд)
+ * Учитывает сегодняшний день динамически
+ * ✅ ИСПРАВЛЕНО: использует UTC для избежания timezone проблем
+ */
+async function calculateCurrentStreak(userId) {
+  try {
+    const query = `
+      SELECT date, steps, steps_goal, is_streak_completed, is_finalized
+      FROM daily_steps
+      WHERE user_id = $1
+      ORDER BY date DESC
+      LIMIT 365
+    `;
+    
+    const result = await db.query(query, [userId]);
+    const days = result.rows;
+    
+    if (days.length === 0) return 0;
+    
+    let streak = 0;
+    
+    // ✅ Используем UTC для текущей даты
+    const now = new Date();
+    let expectedDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    
+    // Если сегодня еще нет записи, начинаем со вчера
+    const today = formatUTCDate(expectedDate);
+    const firstDayStr = days[0].date;
+    
+    if (firstDayStr !== today) {
+      expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
+    }
+    
+    for (const day of days) {
+      // ✅ Парсим дату в UTC
+      const dayDate = parseUTCDate(day.date);
+      const dayStr = formatUTCDate(dayDate);
+      const expectedStr = formatUTCDate(expectedDate);
       
-      if (result.bonusXP > 0 || !result.goalReached) {
-        bonusDetails.push({
-          date: day.date,
-          steps: day.steps,
-          goal: result.stepsGoal,
-          bonus: result.bonusXP,
-          goal_reached: result.goalReached
-        });
+      if (dayStr !== expectedStr) {
+        break; // Пропуск дня - streak сломан
+      }
+      
+      // Для финализированных дней - смотрим на флаг
+      // Для сегодняшнего дня (is_finalized = false) - пересчитываем
+      let isStreakValid = false;
+      
+      if (day.is_finalized) {
+        isStreakValid = day.is_streak_completed;
+      } else {
+        // Сегодняшний день - пересчитываем динамически
+        const threshold = day.steps_goal * 0.5;
+        isStreakValid = day.steps >= threshold;
+      }
+      
+      if (isStreakValid) {
+        streak++;
+        expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
+      } else {
+        break; // День не выполнен - streak сломан
       }
     }
-
-    // 2. Обработка сегодняшнего дня
-    const todayResult = await processTodayDay(user_id, today);
-    totalXPGained += todayResult.xpGained;
-
-    // 3. Финальный результат
-    const result = await getFinalProgress(user_id);
     
-    // 4. Добавляем информацию о сегодняшнем дне
-    const todayGoal = GOAL_CONFIG[today.goal_level].steps;
-    const todayPercentage = Math.floor((today.steps / todayGoal) * 100);
-    const todayGoalReached = today.steps >= todayGoal;
-    const isStreakCompletedToday = today.steps >= (todayGoal * 0.5);
-
-    res.json({
-      ...result,
-      
-      // Общее
-      previous_xp: previousXP,
-      xp_gained: totalXPGained,
-      
-      // Бонусы за вчерашние дни
-      bonus_xp_earned: bonusXPEarned,
-      bonus_details: bonusDetails,
-      
-      // Сегодняшний день
-      today_steps: today.steps,
-      today_goal: todayGoal,
-      today_goal_percentage: todayPercentage,
-      today_goal_reached: todayGoalReached,
-      is_streak_completed_today: isStreakCompletedToday
-    });
-
+    return streak;
   } catch (error) {
-    console.error('Ошибка в syncSteps:', error);
-    res.status(500).json({ 
-      error: 'Внутренняя ошибка сервера',
-      message: error.message 
-    });
+    console.error('Ошибка при подсчете current_streak:', error);
+    return 0;
   }
 }
 
 /**
- * Обработка завершенного дня (не сегодняшний)
- * - Начисляем XP (если день новый)
- * - Начисляем бонус (если цель выполнена)
- * - Финализируем день (is_finalized = true)
+ * Подсчет самого длинного streak за все время
+ * Учитывает только финализированные дни
+ * ✅ ИСПРАВЛЕНО: использует UTC для избежания timezone проблем
  */
-async function processPreviousDay(userId, day) {
-  const { date, steps, goal_level } = day;
-  
-  // Валидация goal_level
-  if (!GOAL_CONFIG[goal_level]) {
-    console.warn(`Неверный goal_level: ${goal_level} для дня ${date}`);
-    return { xpGained: 0, bonusXP: 0, goalReached: false, stepsGoal: 0 };
-  }
-
-  const stepsGoal = GOAL_CONFIG[goal_level].steps;
-  const bonusPercent = GOAL_CONFIG[goal_level].bonus;
-  const isGoalCompleted = steps >= stepsGoal;
-  const isStreakCompleted = steps >= (stepsGoal * 0.5);
-
-  // Проверяем существует ли день в БД
-  const existingDay = await db.query(
-    'SELECT steps, is_finalized FROM daily_steps WHERE user_id = $1 AND date = $2',
-    [userId, date]
-  );
-
-  let xpGained = 0;
-  let bonusXP = 0;
-
-  if (existingDay.rows.length === 0) {
-    // День НЕ существует в БД → новый день
-    console.log(`📅 Новый завершенный день: ${date}`);
+async function calculateLongestStreak(userId) {
+  try {
+    const query = `
+      SELECT date, is_streak_completed
+      FROM daily_steps
+      WHERE user_id = $1 AND is_finalized = true
+      ORDER BY date ASC
+    `;
     
-    // Начисляем весь XP
-    await db.query(
-      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
-      [steps, userId]
-    );
-    xpGained = steps;
-
-    // Начисляем бонус если цель выполнена
-    if (isGoalCompleted) {
-      bonusXP = Math.floor(steps * bonusPercent);
-      await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
-        [bonusXP, userId]
-      );
-      console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
-    } else {
-      console.log(`ℹ️ День ${date}: цель не выполнена, бонус не начислен`);
-    }
-
-    // Сохраняем день с is_finalized = true
-    await saveDailyStep(userId, {
-      date,
-      steps,
-      goal_level,
-      is_goal_completed: isGoalCompleted,
-      is_streak_completed: isStreakCompleted,
-      is_finalized: true
-    });
-
-  } else {
-    const oldSteps = existingDay.rows[0].steps;
-    const isFinalized = existingDay.rows[0].is_finalized;
-
-    if (isFinalized) {
-      // День уже финализирован → полностью пропускаем
-      console.log(`ℹ️ День ${date} уже был обработан ранее (дубликат)`);
-      return { xpGained: 0, bonusXP: 0, goalReached: isGoalCompleted, stepsGoal };
-    }
-
-    // День существует с is_finalized = false → был "сегодня" в прошлую синхронизацию
-    console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов)`);
+    const result = await db.query(query, [userId]);
+    const days = result.rows;
     
-    // XP УЖЕ начислен когда день был "сегодня"
-    xpGained = 0;
-
-    // Начисляем ТОЛЬКО бонус (если цель выполнена)
-    if (isGoalCompleted) {
-      bonusXP = Math.floor(steps * bonusPercent);
-      await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
-        [bonusXP, userId]
-      );
-      console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
-    } else {
-      console.log(`ℹ️ День ${date}: цель не выполнена, бонус не начислен`);
-    }
-
-    // Обновляем день: is_finalized = true
-    await updateDailyStep(userId, date, {
-      is_goal_completed: isGoalCompleted,
-      is_streak_completed: isStreakCompleted,
-      is_finalized: true
-    });
-  }
-
-  return { xpGained, bonusXP, goalReached: isGoalCompleted, stepsGoal };
-}
-
-/**
- * Обработка сегодняшнего дня
- * - Начисляем XP (весь или разницу)
- * - Бонус НЕ начисляем (день не завершен)
- * - is_finalized = false
- */
-async function processTodayDay(userId, day) {
-  const { date, steps, goal_level } = day;
-  
-  if (!GOAL_CONFIG[goal_level]) {
-    console.warn(`Неверный goal_level: ${goal_level} для дня ${date}`);
-    return { xpGained: 0 };
-  }
-
-  const stepsGoal = GOAL_CONFIG[goal_level].steps;
-  const isGoalCompleted = steps >= stepsGoal;
-  const isStreakCompleted = steps >= (stepsGoal * 0.5);
-
-  // Проверяем существует ли день в БД
-  const existingDay = await db.query(
-    'SELECT steps FROM daily_steps WHERE user_id = $1 AND date = $2',
-    [userId, date]
-  );
-
-  let xpGained = 0;
-
-  if (existingDay.rows.length === 0) {
-    // Первый заход сегодня → начисляем весь XP
-    console.log(`📅 Первый заход сегодня: ${date}, шагов: ${steps}`);
+    if (days.length === 0) return 0;
     
-    await db.query(
-      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
-      [steps, userId]
-    );
-    xpGained = steps;
-
-    // Сохраняем с is_finalized = false
-    await saveDailyStep(userId, {
-      date,
-      steps,
-      goal_level,
-      is_goal_completed: isGoalCompleted,
-      is_streak_completed: isStreakCompleted,
-      is_finalized: false
-    });
-
-  } else {
-    // Повторный заход сегодня → начисляем разницу
-    const oldSteps = existingDay.rows[0].steps;
-    const difference = steps - oldSteps;
-
-    if (difference < 0) {
-      console.warn(`⚠️ Шаги уменьшились для ${date}: ${oldSteps} → ${steps}`);
-      return { xpGained: 0 };
+    let maxStreak = 0;
+    let currentStreak = 0;
+    let prevDate = null;
+    
+    for (const day of days) {
+      // ✅ Парсим дату в UTC
+      const currentDate = parseUTCDate(day.date);
+      
+      if (prevDate) {
+        const expectedDate = new Date(prevDate);
+        expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+        
+        // Проверяем последовательность дней
+        if (currentDate.getTime() !== expectedDate.getTime()) {
+          maxStreak = Math.max(maxStreak, currentStreak);
+          currentStreak = 0;
+        }
+      }
+      
+      if (day.is_streak_completed) {
+        currentStreak++;
+      } else {
+        maxStreak = Math.max(maxStreak, currentStreak);
+        currentStreak = 0;
+      }
+      
+      prevDate = currentDate;
     }
-
-    console.log(`📅 Повторный заход сегодня: ${date}, было ${oldSteps}, стало ${steps}, разница ${difference}`);
-
-    if (difference > 0) {
-      await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
-        [difference, userId]
-      );
-      xpGained = difference;
-    }
-
-    // Обновляем запись (is_finalized остается false)
-    await updateDailyStep(userId, date, {
-      steps,
-      is_goal_completed: isGoalCompleted,
-      is_streak_completed: isStreakCompleted,
-      is_finalized: false
-    });
-  }
-
-  return { xpGained };
-}
-
-async function updateGoalLevel(userId, goalLevel) {
-  if (goalLevel < 1 || goalLevel > 4) {
-    throw new Error(`Неверный goal_level: ${goalLevel}. Допустимые значения: 1-4`);
-  }
-
-  await db.query(
-    'UPDATE user_progress SET goal_level = $1 WHERE user_id = $2',
-    [goalLevel, userId]
-  );
-}
-
-async function getFinalProgress(userId) {
-  const result = await db.query(
-    'SELECT total_steps, total_xp, current_level FROM user_progress WHERE user_id = $1',
-    [userId]
-  );
-
-  if (result.rows.length === 0) {
-    const characterData = getCharacterData(1);
-    return {
-      total_steps: 0,
-      current_xp: 0,
-      current_level: 1,
-      xp_to_next_level: 10000,
-      character_image_url: characterData.image_url,
-      character_animation_url: characterData.animation_url,
-      current_streak: 0,
-      longest_streak: 0
-    };
-  }
-
-  const user = result.rows[0];
-  const totalXP = parseInt(user.total_xp);
-  
-  // Вычисляем уровень и прогресс
-  let level = 1;
-  let accumulated = 0;
-  
-  while (accumulated + (level * 10000) <= totalXP) {
-    accumulated += level * 10000;
-    level++;
-  }
-
-  const currentXP = totalXP - accumulated;
-  const xpToNext = level * 10000;
-
-  const characterData = getCharacterData(level);
-
-  // Подсчет streak (учитывает сегодняшний день)
-  const currentStreak = await calculateCurrentStreak(userId);
-  const longestStreak = await calculateLongestStreak(userId);
-
-  return {
-    total_steps: parseInt(user.total_steps),
-    current_xp: currentXP,
-    current_level: level,
-    xp_to_next_level: xpToNext,
-    character_image_url: characterData.image_url,
-    character_animation_url: characterData.animation_url,
-    current_streak: currentStreak,
-    longest_streak: longestStreak
-  };
-}
-
-async function getCurrentProgress(userId) {
-  return await getFinalProgress(userId);
-}
-
-async function ensureUserExists(userId) {
-  const userCheck = await db.query(
-    'SELECT id FROM users WHERE id = $1',
-    [userId]
-  );
-
-  if (userCheck.rows.length === 0) {
-    await db.query('INSERT INTO users (id) VALUES ($1)', [userId]);
-    await db.query(
-      'INSERT INTO user_progress (user_id, goal_level) VALUES ($1, $2)',
-      [userId, 3]
-    );
-    console.log('✅ Новый пользователь создан:', userId);
+    
+    maxStreak = Math.max(maxStreak, currentStreak);
+    return maxStreak;
+  } catch (error) {
+    console.error('Ошибка при подсчете longest_streak:', error);
+    return 0;
   }
 }
 
-module.exports = { syncSteps };
+module.exports = {
+  saveDailyStep,
+  updateDailyStep,
+  calculateCurrentStreak,
+  calculateLongestStreak,
+  GOAL_CONFIG
+};
