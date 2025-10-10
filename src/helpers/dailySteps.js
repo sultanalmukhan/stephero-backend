@@ -8,6 +8,16 @@ const GOAL_CONFIG = {
 };
 
 /**
+ * ✅ Helper для форматирования даты БЕЗ timezone проблем
+ */
+function formatDateLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Сохранить день в базу (для новых дней)
  */
 async function saveDailyStep(userId, dayData) {
@@ -60,7 +70,6 @@ async function updateDailyStep(userId, date, updates) {
   } = updates;
   
   try {
-    // Обновляем только переданные поля
     const setClauses = [];
     const values = [];
     let paramIndex = 1;
@@ -90,7 +99,6 @@ async function updateDailyStep(userId, date, updates) {
     }
 
     setClauses.push(`updated_at = NOW()`);
-
     values.push(userId, date);
 
     const query = `
@@ -109,8 +117,8 @@ async function updateDailyStep(userId, date, updates) {
 }
 
 /**
- * Подсчет текущего streak (дней подряд)
- * Учитывает сегодняшний день динамически
+ * ✅ ИСПРАВЛЕНО: Подсчет текущего streak (дней подряд)
+ * Убраны timezone проблемы - работаем напрямую со строками дат
  */
 async function calculateCurrentStreak(userId) {
   try {
@@ -131,19 +139,19 @@ async function calculateCurrentStreak(userId) {
     let expectedDate = new Date();
     expectedDate.setHours(0, 0, 0, 0);
     
-    // Если сегодня еще нет записи, начинаем со вчера
-    const today = expectedDate.toISOString().split('T')[0];
-    const firstDayStr = new Date(days[0].date).toISOString().split('T')[0];
+    // ✅ Форматируем сегодняшнюю дату БЕЗ timezone проблем
+    const today = formatDateLocal(expectedDate);
+    const firstDayStr = days[0].date;  // Уже строка "yyyy-MM-dd" из БД
     
+    // Если сегодня еще нет записи, начинаем со вчера
     if (firstDayStr !== today) {
       expectedDate.setDate(expectedDate.getDate() - 1);
     }
     
     for (const day of days) {
-      const dayDate = new Date(day.date);
-      dayDate.setHours(0, 0, 0, 0);
-      const dayStr = dayDate.toISOString().split('T')[0];
-      const expectedStr = expectedDate.toISOString().split('T')[0];
+      // ✅ Работаем напрямую со строками дат из БД
+      const dayStr = day.date;  // Уже "yyyy-MM-dd"
+      const expectedStr = formatDateLocal(expectedDate);
       
       if (dayStr !== expectedStr) {
         break; // Пропуск дня - streak сломан
@@ -177,8 +185,8 @@ async function calculateCurrentStreak(userId) {
 }
 
 /**
- * Подсчет самого длинного streak за все время
- * Учитывает только финализированные дни
+ * ✅ ИСПРАВЛЕНО: Подсчет самого длинного streak за все время
+ * Убраны timezone проблемы
  */
 async function calculateLongestStreak(userId) {
   try {
@@ -196,18 +204,21 @@ async function calculateLongestStreak(userId) {
     
     let maxStreak = 0;
     let currentStreak = 0;
-    let prevDate = null;
+    let prevDateStr = null;
     
     for (const day of days) {
-      const currentDate = new Date(day.date);
-      currentDate.setHours(0, 0, 0, 0);
+      // ✅ Работаем напрямую со строками дат
+      const currentDateStr = day.date;  // Уже "yyyy-MM-dd"
       
-      if (prevDate) {
-        const expectedDate = new Date(prevDate);
-        expectedDate.setDate(expectedDate.getDate() + 1);
+      if (prevDateStr) {
+        // Парсим предыдущую дату и добавляем 1 день
+        const [year, month, dayNum] = prevDateStr.split('-').map(Number);
+        const prevDate = new Date(year, month - 1, dayNum);
+        prevDate.setDate(prevDate.getDate() + 1);
+        const expectedDateStr = formatDateLocal(prevDate);
         
         // Проверяем последовательность дней
-        if (currentDate.getTime() !== expectedDate.getTime()) {
+        if (currentDateStr !== expectedDateStr) {
           maxStreak = Math.max(maxStreak, currentStreak);
           currentStreak = 0;
         }
@@ -220,7 +231,7 @@ async function calculateLongestStreak(userId) {
         currentStreak = 0;
       }
       
-      prevDate = currentDate;
+      prevDateStr = currentDateStr;
     }
     
     maxStreak = Math.max(maxStreak, currentStreak);
