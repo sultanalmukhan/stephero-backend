@@ -118,7 +118,8 @@ async function updateDailyStep(userId, date, updates) {
 
 /**
  * ✅ ИСПРАВЛЕНО: Подсчет текущего streak (дней подряд)
- * Убраны timezone проблемы - работаем напрямую со строками дат
+ * - Убраны timezone проблемы
+ * - PostgreSQL Date объекты конвертируются в строки
  */
 async function calculateCurrentStreak(userId) {
   try {
@@ -144,7 +145,9 @@ async function calculateCurrentStreak(userId) {
     
     // ✅ Форматируем сегодняшнюю дату БЕЗ timezone проблем
     const today = formatDateLocal(expectedDate);
-    const firstDayStr = days[0].date;  // Уже строка "yyyy-MM-dd" из БД
+    // ✅ ИСПРАВЛЕНИЕ: Конвертируем Date объект из БД в строку
+    const firstDayDate = new Date(days[0].date);
+    const firstDayStr = formatDateLocal(firstDayDate);
     
     console.log('   Today:', today);
     console.log('   First day in DB:', firstDayStr);
@@ -156,8 +159,9 @@ async function calculateCurrentStreak(userId) {
     }
     
     for (const day of days) {
-      // ✅ Работаем напрямую со строками дат из БД
-      const dayStr = day.date;  // Уже "yyyy-MM-dd"
+      // ✅ ИСПРАВЛЕНИЕ: PostgreSQL возвращает Date объект, конвертируем в строку
+      const dayDate = new Date(day.date);
+      const dayStr = formatDateLocal(dayDate);
       const expectedStr = formatDateLocal(expectedDate);
       
       console.log(`   Checking day: ${dayStr} vs expected: ${expectedStr}`);
@@ -200,7 +204,9 @@ async function calculateCurrentStreak(userId) {
 
 /**
  * ✅ ИСПРАВЛЕНО: Подсчет самого длинного streak за все время
- * Убраны timezone проблемы + исправлен баг с undefined prevDateStr
+ * - Убраны timezone проблемы
+ * - Исправлен баг с undefined prevDateStr
+ * - PostgreSQL Date объекты конвертируются в строки
  */
 async function calculateLongestStreak(userId) {
   try {
@@ -221,7 +227,9 @@ async function calculateLongestStreak(userId) {
     let prevDateStr = null;  // ✅ ИСПРАВЛЕНИЕ: Инициализируем как null
     
     for (const day of days) {
-      const currentDateStr = day.date;  // Уже "yyyy-MM-dd"
+      // ✅ ИСПРАВЛЕНИЕ: PostgreSQL возвращает Date объект, конвертируем в строку
+      const dayDate = new Date(day.date);
+      const currentDateStr = formatDateLocal(dayDate);
       
       if (prevDateStr) {  // ✅ ИСПРАВЛЕНИЕ: Проверяем prevDateStr
         // Парсим предыдущую дату и добавляем 1 день
