@@ -16,67 +16,12 @@ async function syncSteps(req, res) {
       completed_days,
     } = req.body;
 
-    // ✅ УЛУЧШЕННАЯ ВАЛИДАЦИЯ
-    
-    // 1. Проверка наличия обязательных полей
-    if (!user_id || !current_goal_level || !completed_days) {
+    // Валидация
+    if (!user_id || !current_goal_level || !completed_days || completed_days.length === 0) {
       return res.status(400).json({ 
         error: 'Отсутствуют обязательные поля',
         required: ['user_id', 'current_goal_level', 'completed_days']
       });
-    }
-
-    // 2. Валидация UUID
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(user_id)) {
-      return res.status(400).json({ 
-        error: 'Неверный формат user_id. Ожидается UUID' 
-      });
-    }
-
-    // 3. Валидация goal_level
-    if (!GOAL_CONFIG[current_goal_level]) {
-      return res.status(400).json({ 
-        error: 'Неверный goal_level. Допустимые значения: 1, 2, 3, 4' 
-      });
-    }
-
-    // 4. Валидация completed_days
-    if (!Array.isArray(completed_days) || completed_days.length === 0) {
-      return res.status(400).json({ 
-        error: 'completed_days должен быть непустым массивом' 
-      });
-    }
-
-    // 5. Валидация структуры каждого дня
-    for (let i = 0; i < completed_days.length; i++) {
-      const day = completed_days[i];
-      
-      if (!day.date || day.steps === undefined || !day.goal_level) {
-        return res.status(400).json({ 
-          error: `completed_days[${i}]: отсутствуют обязательные поля (date, steps, goal_level)` 
-        });
-      }
-
-      // Валидация формата даты
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date)) {
-        return res.status(400).json({ 
-          error: `completed_days[${i}]: неверный формат даты "${day.date}". Ожидается: yyyy-MM-dd` 
-        });
-      }
-
-      // Валидация типов
-      if (typeof day.steps !== 'number' || day.steps < 0) {
-        return res.status(400).json({ 
-          error: `completed_days[${i}]: steps должен быть положительным числом` 
-        });
-      }
-
-      if (!GOAL_CONFIG[day.goal_level]) {
-        return res.status(400).json({ 
-          error: `completed_days[${i}]: неверный goal_level "${day.goal_level}"` 
-        });
-      }
     }
 
     // Создать пользователя если не существует
@@ -222,17 +167,13 @@ async function processPreviousDay(userId, day) {
     const isFinalized = existingDay.rows[0].is_finalized;
 
     if (isFinalized) {
-      // ✅ День уже финализирован → логируем изменения, но не обрабатываем
-      if (oldSteps !== steps) {
-        console.warn(`⚠️ Попытка изменить финализированный день ${date}: ${oldSteps} → ${steps} шагов`);
-      } else {
-        console.log(`ℹ️ День ${date} уже был обработан ранее (дубликат запроса)`);
-      }
+      // День уже финализирован → полностью пропускаем
+      console.log(`ℹ️ День ${date} уже был обработан ранее (дубликат)`);
       return { xpGained: 0, bonusXP: 0, goalReached: isGoalCompleted, stepsGoal };
     }
 
     // День существует с is_finalized = false → был "сегодня" в прошлую синхронизацию
-    console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов, стало ${steps})`);
+    console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов)`);
     
     // XP УЖЕ начислен когда день был "сегодня"
     xpGained = 0;
@@ -251,7 +192,6 @@ async function processPreviousDay(userId, day) {
 
     // Обновляем день: is_finalized = true
     await updateDailyStep(userId, date, {
-      steps,  // ✅ Обновляем steps на случай изменения
       is_goal_completed: isGoalCompleted,
       is_streak_completed: isStreakCompleted,
       is_finalized: true
@@ -313,17 +253,7 @@ async function processTodayDay(userId, day) {
     const difference = steps - oldSteps;
 
     if (difference < 0) {
-      // ✅ Логируем, но все равно обновляем запись (на случай корректировки HealthKit)
       console.warn(`⚠️ Шаги уменьшились для ${date}: ${oldSteps} → ${steps}`);
-      
-      // Обновляем запись без изменения XP
-      await updateDailyStep(userId, date, {
-        steps,
-        is_goal_completed: isGoalCompleted,
-        is_streak_completed: isStreakCompleted,
-        is_finalized: false
-      });
-      
       return { xpGained: 0 };
     }
 
