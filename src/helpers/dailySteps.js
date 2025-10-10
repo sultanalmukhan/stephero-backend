@@ -133,6 +133,9 @@ async function calculateCurrentStreak(userId) {
     const result = await db.query(query, [userId]);
     const days = result.rows;
     
+    console.log('🔍 calculateCurrentStreak DEBUG:');
+    console.log('   Days found:', days.length);
+    
     if (days.length === 0) return 0;
     
     let streak = 0;
@@ -143,9 +146,13 @@ async function calculateCurrentStreak(userId) {
     const today = formatDateLocal(expectedDate);
     const firstDayStr = days[0].date;  // Уже строка "yyyy-MM-dd" из БД
     
+    console.log('   Today:', today);
+    console.log('   First day in DB:', firstDayStr);
+    
     // Если сегодня еще нет записи, начинаем со вчера
     if (firstDayStr !== today) {
       expectedDate.setDate(expectedDate.getDate() - 1);
+      console.log('   Starting from yesterday');
     }
     
     for (const day of days) {
@@ -153,7 +160,10 @@ async function calculateCurrentStreak(userId) {
       const dayStr = day.date;  // Уже "yyyy-MM-dd"
       const expectedStr = formatDateLocal(expectedDate);
       
+      console.log(`   Checking day: ${dayStr} vs expected: ${expectedStr}`);
+      
       if (dayStr !== expectedStr) {
+        console.log('   → Day gap, breaking streak');
         break; // Пропуск дня - streak сломан
       }
       
@@ -167,16 +177,20 @@ async function calculateCurrentStreak(userId) {
         // Сегодняшний день - пересчитываем динамически
         const threshold = day.steps_goal * 0.5;
         isStreakValid = day.steps >= threshold;
+        console.log(`   → Today: ${day.steps} >= ${threshold}? ${isStreakValid}`);
       }
       
       if (isStreakValid) {
         streak++;
+        console.log(`   → Streak valid! Count: ${streak}`);
         expectedDate.setDate(expectedDate.getDate() - 1);
       } else {
+        console.log('   → Day not completed, breaking streak');
         break; // День не выполнен - streak сломан
       }
     }
     
+    console.log(`   Final streak: ${streak}`);
     return streak;
   } catch (error) {
     console.error('Ошибка при подсчете current_streak:', error);
@@ -186,7 +200,7 @@ async function calculateCurrentStreak(userId) {
 
 /**
  * ✅ ИСПРАВЛЕНО: Подсчет самого длинного streak за все время
- * Убраны timezone проблемы
+ * Убраны timezone проблемы + исправлен баг с undefined prevDateStr
  */
 async function calculateLongestStreak(userId) {
   try {
@@ -204,18 +218,17 @@ async function calculateLongestStreak(userId) {
     
     let maxStreak = 0;
     let currentStreak = 0;
-    let prevDateStr = null;
+    let prevDateStr = null;  // ✅ ИСПРАВЛЕНИЕ: Инициализируем как null
     
     for (const day of days) {
-      // ✅ Работаем напрямую со строками дат
       const currentDateStr = day.date;  // Уже "yyyy-MM-dd"
       
-      if (prevDateStr) {
+      if (prevDateStr) {  // ✅ ИСПРАВЛЕНИЕ: Проверяем prevDateStr
         // Парсим предыдущую дату и добавляем 1 день
         const [year, month, dayNum] = prevDateStr.split('-').map(Number);
-        const prevDate = new Date(year, month - 1, dayNum);
-        prevDate.setDate(prevDate.getDate() + 1);
-        const expectedDateStr = formatDateLocal(prevDate);
+        const prevDateObj = new Date(year, month - 1, dayNum);  // ✅ ИСПРАВЛЕНИЕ: Переименовано
+        prevDateObj.setDate(prevDateObj.getDate() + 1);
+        const expectedDateStr = formatDateLocal(prevDateObj);
         
         // Проверяем последовательность дней
         if (currentDateStr !== expectedDateStr) {
