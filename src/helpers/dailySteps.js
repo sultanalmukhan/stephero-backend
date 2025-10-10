@@ -7,6 +7,20 @@ const GOAL_CONFIG = {
   4: { steps: 12500, bonus: 0.40 }
 };
 
+// ✅ HELPER: Парсинг даты в UTC для избежания timezone проблем
+function parseUTCDate(dateString) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+// ✅ HELPER: Форматирование даты в yyyy-MM-dd
+function formatUTCDate(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * Сохранить день в базу (для новых дней)
  */
@@ -111,6 +125,7 @@ async function updateDailyStep(userId, date, updates) {
 /**
  * Подсчет текущего streak (дней подряд)
  * Учитывает сегодняшний день динамически
+ * ✅ ИСПРАВЛЕНО: использует UTC для избежания timezone проблем
  */
 async function calculateCurrentStreak(userId) {
   try {
@@ -128,22 +143,24 @@ async function calculateCurrentStreak(userId) {
     if (days.length === 0) return 0;
     
     let streak = 0;
-    let expectedDate = new Date();
-    expectedDate.setHours(0, 0, 0, 0);
+    
+    // ✅ Используем UTC для текущей даты
+    const now = new Date();
+    let expectedDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     
     // Если сегодня еще нет записи, начинаем со вчера
-    const today = expectedDate.toISOString().split('T')[0];
-    const firstDayStr = new Date(days[0].date).toISOString().split('T')[0];
+    const today = formatUTCDate(expectedDate);
+    const firstDayStr = days[0].date;
     
     if (firstDayStr !== today) {
-      expectedDate.setDate(expectedDate.getDate() - 1);
+      expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
     }
     
     for (const day of days) {
-      const dayDate = new Date(day.date);
-      dayDate.setHours(0, 0, 0, 0);
-      const dayStr = dayDate.toISOString().split('T')[0];
-      const expectedStr = expectedDate.toISOString().split('T')[0];
+      // ✅ Парсим дату в UTC
+      const dayDate = parseUTCDate(day.date);
+      const dayStr = formatUTCDate(dayDate);
+      const expectedStr = formatUTCDate(expectedDate);
       
       if (dayStr !== expectedStr) {
         break; // Пропуск дня - streak сломан
@@ -163,7 +180,7 @@ async function calculateCurrentStreak(userId) {
       
       if (isStreakValid) {
         streak++;
-        expectedDate.setDate(expectedDate.getDate() - 1);
+        expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
       } else {
         break; // День не выполнен - streak сломан
       }
@@ -179,6 +196,7 @@ async function calculateCurrentStreak(userId) {
 /**
  * Подсчет самого длинного streak за все время
  * Учитывает только финализированные дни
+ * ✅ ИСПРАВЛЕНО: использует UTC для избежания timezone проблем
  */
 async function calculateLongestStreak(userId) {
   try {
@@ -199,12 +217,12 @@ async function calculateLongestStreak(userId) {
     let prevDate = null;
     
     for (const day of days) {
-      const currentDate = new Date(day.date);
-      currentDate.setHours(0, 0, 0, 0);
+      // ✅ Парсим дату в UTC
+      const currentDate = parseUTCDate(day.date);
       
       if (prevDate) {
         const expectedDate = new Date(prevDate);
-        expectedDate.setDate(expectedDate.getDate() + 1);
+        expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
         
         // Проверяем последовательность дней
         if (currentDate.getTime() !== expectedDate.getTime()) {
