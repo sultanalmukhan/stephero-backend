@@ -8,25 +8,25 @@ const GOAL_CONFIG = {
 };
 
 /**
- * Сохранить завершенный день в базу
+ * Сохранить день в базу (для новых дней)
  */
-async function saveDailyStep(userId, completedDay) {
-  const { date, steps, goal_level } = completedDay;
+async function saveDailyStep(userId, dayData) {
+  const { 
+    date, 
+    steps, 
+    goal_level, 
+    is_goal_completed, 
+    is_streak_completed,
+    is_finalized 
+  } = dayData;
   
-  // Получаем цель для этого уровня
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
   
-  // Вычисляем флаги
-  const isGoalCompleted = steps >= stepsGoal;
-  const isStreakCompleted = steps >= (stepsGoal * 0.5);
-  
   try {
-    // Сохраняем в БД (игнорируем если уже есть)
     const query = `
       INSERT INTO daily_steps 
-        (user_id, date, steps, goal_level, steps_goal, is_goal_completed, is_streak_completed)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (user_id, date) DO NOTHING
+        (user_id, date, steps, goal_level, steps_goal, is_goal_completed, is_streak_completed, is_finalized)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
     
@@ -36,11 +36,12 @@ async function saveDailyStep(userId, completedDay) {
       steps,
       goal_level,
       stepsGoal,
-      isGoalCompleted,
-      isStreakCompleted
+      is_goal_completed,
+      is_streak_completed,
+      is_finalized
     ]);
     
-    return result.rows[0]; // null если уже существовал
+    return result.rows[0];
   } catch (error) {
     console.error('Ошибка при сохранении daily_step:', error);
     throw error;
@@ -48,12 +49,73 @@ async function saveDailyStep(userId, completedDay) {
 }
 
 /**
- * Подсчет текущего streak (дней подряд с начала)
+ * Обновить существующий день (для обновления сегодняшнего дня или финализации)
+ */
+async function updateDailyStep(userId, date, updates) {
+  const { 
+    steps, 
+    is_goal_completed, 
+    is_streak_completed, 
+    is_finalized 
+  } = updates;
+  
+  try {
+    // Обновляем только переданные поля
+    const setClauses = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (steps !== undefined) {
+      setClauses.push(`steps = $${paramIndex}`);
+      values.push(steps);
+      paramIndex++;
+    }
+
+    if (is_goal_completed !== undefined) {
+      setClauses.push(`is_goal_completed = $${paramIndex}`);
+      values.push(is_goal_completed);
+      paramIndex++;
+    }
+
+    if (is_streak_completed !== undefined) {
+      setClauses.push(`is_streak_completed = $${paramIndex}`);
+      values.push(is_streak_completed);
+      paramIndex++;
+    }
+
+    if (is_finalized !== undefined) {
+      setClauses.push(`is_finalized = $${paramIndex}`);
+      values.push(is_finalized);
+      paramIndex++;
+    }
+
+    setClauses.push(`updated_at = NOW()`);
+
+    values.push(userId, date);
+
+    const query = `
+      UPDATE daily_steps 
+      SET ${setClauses.join(', ')}
+      WHERE user_id = $${paramIndex} AND date = $${paramIndex + 1}
+      RETURNING *
+    `;
+    
+    const result = await db.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Ошибка при обновлении daily_step:', error);
+    throw error;
+  }
+}
+
+/**
+ * Подсчет текущего streak (дней подряд)
+ * Учитывает сегодняшний день динамически
  */
 async function calculateCurrentStreak(userId) {
   try {
     const query = `
-      SELECT date, is_streak_completed
+      SELECT date, steps, steps_goal, is_streak_completed, is_finalized
       FROM daily_steps
       WHERE user_id = $1
       ORDER BY date DESC
@@ -87,7 +149,19 @@ async function calculateCurrentStreak(userId) {
         break; // Пропуск дня - streak сломан
       }
       
-      if (day.is_streak_completed) {
+      // Для финализированных дней - смотрим на флаг
+      // Для сегодняшнего дня (is_finalized = false) - пересчитываем
+      let isStreakValid = false;
+      
+      if (day.is_finalized) {
+        isStreakValid = day.is_streak_completed;
+      } else {
+        // Сегодняшний день - пересчитываем динамически
+        const threshold = day.steps_goal * 0.5;
+        isStreakValid = day.steps >= threshold;
+      }
+      
+      if (isStreakValid) {
         streak++;
         expectedDate.setDate(expectedDate.getDate() - 1);
       } else {
@@ -104,13 +178,14 @@ async function calculateCurrentStreak(userId) {
 
 /**
  * Подсчет самого длинного streak за все время
+ * Учитывает только финализированные дни
  */
 async function calculateLongestStreak(userId) {
   try {
     const query = `
       SELECT date, is_streak_completed
       FROM daily_steps
-      WHERE user_id = $1
+      WHERE user_id = $1 AND is_finalized = true
       ORDER BY date ASC
     `;
     
@@ -158,6 +233,7 @@ async function calculateLongestStreak(userId) {
 
 module.exports = {
   saveDailyStep,
+  updateDailyStep,
   calculateCurrentStreak,
   calculateLongestStreak,
   GOAL_CONFIG
