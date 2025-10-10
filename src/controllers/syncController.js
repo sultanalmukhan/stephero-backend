@@ -38,6 +38,10 @@ async function syncSteps(req, res) {
     const today = completed_days[completed_days.length - 1];
     const previousDays = completed_days.slice(0, -1);
 
+    console.log(`📊 Синхронизация для ${user_id}:`);
+    console.log(`   Завершенных дней: ${previousDays.length}`);
+    console.log(`   Сегодня: ${today.date} (${today.steps} шагов)`);
+
     let totalXPGained = 0;
     let bonusXPEarned = 0;
     const bonusDetails = [];
@@ -101,8 +105,8 @@ async function syncSteps(req, res) {
 }
 
 /**
- * Обработка завершенного дня (не сегодняшний)
- * - Начисляем XP (если день новый)
+ * ✅ ИСПРАВЛЕНО: Обработка завершенного дня (не сегодняшний)
+ * - Начисляем XP (если день новый ИЛИ есть разница при финализации)
  * - Начисляем бонус (если цель выполнена)
  * - Финализируем день (is_finalized = true)
  */
@@ -172,11 +176,23 @@ async function processPreviousDay(userId, day) {
       return { xpGained: 0, bonusXP: 0, goalReached: isGoalCompleted, stepsGoal };
     }
 
-    // День существует с is_finalized = false → был "сегодня" в прошлую синхронизацию
-    console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов)`);
+    // ✅ ИСПРАВЛЕНИЕ: День существует с is_finalized = false → был "сегодня" в прошлую синхронизацию
+    console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов, стало ${steps} шагов)`);
     
-    // XP УЖЕ начислен когда день был "сегодня"
-    xpGained = 0;
+    // ✅ Проверяем разницу в шагах
+    const difference = steps - oldSteps;
+    
+    if (difference > 0) {
+      // ✅ Есть разница - начисляем XP за дополнительные шаги
+      await db.query(
+        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
+        [difference, userId]
+      );
+      xpGained = difference;
+      console.log(`✅ Начислен XP за разницу: ${difference}`);
+    } else if (difference < 0) {
+      console.warn(`⚠️ Шаги уменьшились для ${date}: ${oldSteps} → ${steps}`);
+    }
 
     // Начисляем ТОЛЬКО бонус (если цель выполнена)
     if (isGoalCompleted) {
@@ -190,8 +206,9 @@ async function processPreviousDay(userId, day) {
       console.log(`ℹ️ День ${date}: цель не выполнена, бонус не начислен`);
     }
 
-    // Обновляем день: is_finalized = true
+    // ✅ Обновляем день: is_finalized = true + обновляем steps
     await updateDailyStep(userId, date, {
+      steps,  // ✅ Теперь обновляем steps!
       is_goal_completed: isGoalCompleted,
       is_streak_completed: isStreakCompleted,
       is_finalized: true
