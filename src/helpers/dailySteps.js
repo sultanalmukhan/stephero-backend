@@ -51,9 +51,10 @@ async function saveDailyStep(userId, dayData) {
       is_finalized
     ]);
     
+    console.log(`✅ Сохранен день: ${date}, steps: ${steps}, finalized: ${is_finalized}`);
     return result.rows[0];
   } catch (error) {
-    console.error('Ошибка при сохранении daily_step:', error);
+    console.error('❌ Ошибка при сохранении daily_step:', error);
     throw error;
   }
 }
@@ -109,20 +110,25 @@ async function updateDailyStep(userId, date, updates) {
     `;
     
     const result = await db.query(query, values);
+    console.log(`✅ Обновлен день: ${date}, updates:`, updates);
     return result.rows[0];
   } catch (error) {
-    console.error('Ошибка при обновлении daily_step:', error);
+    console.error('❌ Ошибка при обновлении daily_step:', error);
     throw error;
   }
 }
 
 /**
  * ✅ ИСПРАВЛЕНО: Подсчет текущего streak (дней подряд)
+ * - Определяет "сегодня" из данных БД (не финализированный день)
  * - Убраны timezone проблемы
  * - PostgreSQL Date объекты конвертируются в строки
  */
 async function calculateCurrentStreak(userId) {
   try {
+    console.log('\n🔍 === calculateCurrentStreak START ===');
+    console.log('   User ID:', userId);
+    
     const query = `
       SELECT date, steps, steps_goal, is_streak_completed, is_finalized
       FROM daily_steps
@@ -134,41 +140,54 @@ async function calculateCurrentStreak(userId) {
     const result = await db.query(query, [userId]);
     const days = result.rows;
     
-    console.log('🔍 calculateCurrentStreak DEBUG:');
-    console.log('   Days found:', days.length);
+    console.log('   📊 Days found:', days.length);
     
-    if (days.length === 0) return 0;
+    if (days.length === 0) {
+      console.log('   ❌ No days found, streak = 0');
+      console.log('🔍 === calculateCurrentStreak END ===\n');
+      return 0;
+    }
     
-    let streak = 0;
-    let expectedDate = new Date();
-    expectedDate.setHours(0, 0, 0, 0);
-    
-    // ✅ Форматируем сегодняшнюю дату БЕЗ timezone проблем
-    const today = formatDateLocal(expectedDate);
-    // ✅ ИСПРАВЛЕНИЕ: Конвертируем Date объект из БД в строку
+    // ✅ ИСПРАВЛЕНИЕ: Определяем "сегодня" из данных БД
+    // Ищем первый не финализированный день (это сегодня)
+    // Если все финализированы, берем самую свежую дату
+    let todayStr;
     const firstDayDate = new Date(days[0].date);
     const firstDayStr = formatDateLocal(firstDayDate);
     
-    console.log('   Today:', today);
-    console.log('   First day in DB:', firstDayStr);
+    if (!days[0].is_finalized) {
+      // Первый день не финализирован = это сегодня
+      todayStr = firstDayStr;
+      console.log('   📅 Today (from non-finalized):', todayStr);
+    } else {
+      // Все дни финализированы, берем день после последнего
+      const nextDay = new Date(firstDayDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      todayStr = formatDateLocal(nextDay);
+      console.log('   📅 Today (calculated as day after last):', todayStr);
+    }
     
-    // Если сегодня еще нет записи, начинаем со вчера
-    if (firstDayStr !== today) {
+    let streak = 0;
+    let expectedDate = new Date(firstDayDate);
+    expectedDate.setHours(0, 0, 0, 0);
+    
+    // Если первый день в БД не сегодня, начинаем со вчера
+    if (firstDayStr !== todayStr) {
       expectedDate.setDate(expectedDate.getDate() - 1);
-      console.log('   Starting from yesterday');
+      console.log('   ⏮️  Starting from:', formatDateLocal(expectedDate));
     }
     
     for (const day of days) {
-      // ✅ ИСПРАВЛЕНИЕ: PostgreSQL возвращает Date объект, конвертируем в строку
       const dayDate = new Date(day.date);
       const dayStr = formatDateLocal(dayDate);
       const expectedStr = formatDateLocal(expectedDate);
       
-      console.log(`   Checking day: ${dayStr} vs expected: ${expectedStr}`);
+      console.log(`\n   📆 Checking: ${dayStr}`);
+      console.log(`      Expected: ${expectedStr}`);
       
       if (dayStr !== expectedStr) {
-        console.log('   → Day gap, breaking streak');
-        break; // Пропуск дня - streak сломан
+        console.log('      ❌ Day gap detected, breaking streak');
+        break;
       }
       
       // Для финализированных дней - смотрим на флаг
@@ -177,27 +196,29 @@ async function calculateCurrentStreak(userId) {
       
       if (day.is_finalized) {
         isStreakValid = day.is_streak_completed;
+        console.log(`      Finalized: ${isStreakValid ? '✅' : '❌'} (from flag)`);
       } else {
         // Сегодняшний день - пересчитываем динамически
         const threshold = day.steps_goal * 0.5;
         isStreakValid = day.steps >= threshold;
-        console.log(`   → Today: ${day.steps} >= ${threshold}? ${isStreakValid}`);
+        console.log(`      Today: ${day.steps} >= ${threshold}? ${isStreakValid ? '✅' : '❌'}`);
       }
       
       if (isStreakValid) {
         streak++;
-        console.log(`   → Streak valid! Count: ${streak}`);
+        console.log(`      ✅ Streak continues! Count: ${streak}`);
         expectedDate.setDate(expectedDate.getDate() - 1);
       } else {
-        console.log('   → Day not completed, breaking streak');
-        break; // День не выполнен - streak сломан
+        console.log('      ❌ Day not completed, breaking streak');
+        break;
       }
     }
     
-    console.log(`   Final streak: ${streak}`);
+    console.log(`\n   🔥 FINAL STREAK: ${streak}`);
+    console.log('🔍 === calculateCurrentStreak END ===\n');
     return streak;
   } catch (error) {
-    console.error('Ошибка при подсчете current_streak:', error);
+    console.error('❌ Ошибка при подсчете current_streak:', error);
     return 0;
   }
 }
@@ -210,6 +231,9 @@ async function calculateCurrentStreak(userId) {
  */
 async function calculateLongestStreak(userId) {
   try {
+    console.log('\n🔍 === calculateLongestStreak START ===');
+    console.log('   User ID:', userId);
+    
     const query = `
       SELECT date, is_streak_completed
       FROM daily_steps
@@ -220,26 +244,32 @@ async function calculateLongestStreak(userId) {
     const result = await db.query(query, [userId]);
     const days = result.rows;
     
-    if (days.length === 0) return 0;
+    console.log('   📊 Finalized days found:', days.length);
+    
+    if (days.length === 0) {
+      console.log('   ❌ No finalized days, longest = 0');
+      console.log('🔍 === calculateLongestStreak END ===\n');
+      return 0;
+    }
     
     let maxStreak = 0;
     let currentStreak = 0;
-    let prevDateStr = null;  // ✅ ИСПРАВЛЕНИЕ: Инициализируем как null
+    let prevDateStr = null;
     
     for (const day of days) {
-      // ✅ ИСПРАВЛЕНИЕ: PostgreSQL возвращает Date объект, конвертируем в строку
       const dayDate = new Date(day.date);
       const currentDateStr = formatDateLocal(dayDate);
       
-      if (prevDateStr) {  // ✅ ИСПРАВЛЕНИЕ: Проверяем prevDateStr
+      if (prevDateStr) {
         // Парсим предыдущую дату и добавляем 1 день
         const [year, month, dayNum] = prevDateStr.split('-').map(Number);
-        const prevDateObj = new Date(year, month - 1, dayNum);  // ✅ ИСПРАВЛЕНИЕ: Переименовано
+        const prevDateObj = new Date(year, month - 1, dayNum);
         prevDateObj.setDate(prevDateObj.getDate() + 1);
         const expectedDateStr = formatDateLocal(prevDateObj);
         
         // Проверяем последовательность дней
         if (currentDateStr !== expectedDateStr) {
+          console.log(`   ⚠️  Gap detected: ${prevDateStr} -> ${currentDateStr}, resetting streak`);
           maxStreak = Math.max(maxStreak, currentStreak);
           currentStreak = 0;
         }
@@ -247,7 +277,9 @@ async function calculateLongestStreak(userId) {
       
       if (day.is_streak_completed) {
         currentStreak++;
+        console.log(`   ✅ ${currentDateStr}: streak continues (${currentStreak})`);
       } else {
+        console.log(`   ❌ ${currentDateStr}: streak broken`);
         maxStreak = Math.max(maxStreak, currentStreak);
         currentStreak = 0;
       }
@@ -256,9 +288,11 @@ async function calculateLongestStreak(userId) {
     }
     
     maxStreak = Math.max(maxStreak, currentStreak);
+    console.log(`\n   🏆 LONGEST STREAK: ${maxStreak}`);
+    console.log('🔍 === calculateLongestStreak END ===\n');
     return maxStreak;
   } catch (error) {
-    console.error('Ошибка при подсчете longest_streak:', error);
+    console.error('❌ Ошибка при подсчете longest_streak:', error);
     return 0;
   }
 }
