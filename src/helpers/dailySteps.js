@@ -98,12 +98,13 @@ async function updateDailyStep(userId, date, updates) {
     }
 
     if (is_finalized !== undefined) {
-      setClauses.push(`is_finalized = $${paramIndex}`);
+      setClauses.push(`is_finalized = ${paramIndex}`);
       values.push(is_finalized);
       paramIndex++;
     }
 
-    setClauses.push(`updated_at = NOW()`);
+    // ✅ Убрали updated_at, так как колонки нет в БД
+    // setClauses.push(`updated_at = NOW()`);
 
     values.push(userId, date);
 
