@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
 const syncRoutes = require('./routes/sync');
+const versionRoutes = require('./routes/version'); // ✅ Добавили
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +25,7 @@ app.get('/health', (req, res) => {
 
 // API роуты
 app.use('/api', syncRoutes);
+app.use('/api/version', versionRoutes); // ✅ Добавили
 
 // Запуск сервера
 app.listen(PORT, () => {
