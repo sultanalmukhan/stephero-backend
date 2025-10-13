@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+
 const syncRoutes = require('./routes/sync');
-const versionRoutes = require('./routes/version'); // ✅ Добавили
+const versionRoutes = require('./routes/version');
+const achievementsRoutes = require('./routes/achievements'); // ✅ Добавили
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,7 +27,8 @@ app.get('/health', (req, res) => {
 
 // API роуты
 app.use('/api', syncRoutes);
-app.use('/api/version', versionRoutes); // ✅ Добавили
+app.use('/api/version', versionRoutes);
+app.use('/api/achievements', achievementsRoutes); // ✅ Добавили
 
 // Запуск сервера
 app.listen(PORT, () => {
