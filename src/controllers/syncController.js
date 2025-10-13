@@ -105,8 +105,8 @@ async function syncSteps(req, res) {
 }
 
 /**
- * ✅ ИСПРАВЛЕНО: Обработка завершенного дня (не сегодняшний)
- * - Начисляем XP (если день новый ИЛИ есть разница при финализации)
+ * ✅ ОБНОВЛЕНО: Обработка завершенного дня (не сегодняшний)
+ * - Начисляем XP: 1 шаг = 0.1 XP
  * - Начисляем бонус (если цель выполнена)
  * - Финализируем день (is_finalized = true)
  */
@@ -137,16 +137,20 @@ async function processPreviousDay(userId, day) {
     // День НЕ существует в БД → новый день
     console.log(`📅 Новый завершенный день: ${date}`);
     
-    // Начисляем весь XP
+    // ✅ ИЗМЕНЕНО: 1 шаг = 0.1 XP
+    const xpAmount = steps * 0.1;
+    
+    // Начисляем XP (0.1 за шаг) и обновляем total_steps
     await db.query(
-      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
-      [steps, userId]
+      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
+      [xpAmount, steps, userId]
     );
-    xpGained = steps;
+    xpGained = xpAmount;
 
     // Начисляем бонус если цель выполнена
     if (isGoalCompleted) {
-      bonusXP = Math.floor(steps * bonusPercent);
+      // ✅ ИЗМЕНЕНО: Бонус тоже с коэффициентом 0.1
+      bonusXP = parseFloat((steps * bonusPercent * 0.1).toFixed(1));
       await db.query(
         'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
         [bonusXP, userId]
@@ -176,27 +180,30 @@ async function processPreviousDay(userId, day) {
       return { xpGained: 0, bonusXP: 0, goalReached: isGoalCompleted, stepsGoal };
     }
 
-    // ✅ ИСПРАВЛЕНИЕ: День существует с is_finalized = false → был "сегодня" в прошлую синхронизацию
+    // День существует с is_finalized = false → был "сегодня" в прошлую синхронизацию
     console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов, стало ${steps} шагов)`);
     
-    // ✅ Проверяем разницу в шагах
+    // Проверяем разницу в шагах
     const difference = steps - oldSteps;
     
     if (difference > 0) {
-      // ✅ Есть разница - начисляем XP за дополнительные шаги
+      // ✅ ИЗМЕНЕНО: Есть разница - начисляем XP за дополнительные шаги (0.1 за шаг)
+      const xpAmount = difference * 0.1;
+      
       await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
-        [difference, userId]
+        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
+        [xpAmount, difference, userId]
       );
-      xpGained = difference;
-      console.log(`✅ Начислен XP за разницу: ${difference}`);
+      xpGained = xpAmount;
+      console.log(`✅ Начислен XP за разницу: ${xpAmount} (${difference} шагов)`);
     } else if (difference < 0) {
       console.warn(`⚠️ Шаги уменьшились для ${date}: ${oldSteps} → ${steps}`);
     }
 
     // Начисляем ТОЛЬКО бонус (если цель выполнена)
     if (isGoalCompleted) {
-      bonusXP = Math.floor(steps * bonusPercent);
+      // ✅ ИЗМЕНЕНО: Бонус с коэффициентом 0.1
+      bonusXP = parseFloat((steps * bonusPercent * 0.1).toFixed(1));
       await db.query(
         'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
         [bonusXP, userId]
@@ -206,9 +213,9 @@ async function processPreviousDay(userId, day) {
       console.log(`ℹ️ День ${date}: цель не выполнена, бонус не начислен`);
     }
 
-    // ✅ Обновляем день: is_finalized = true + обновляем steps
+    // Обновляем день: is_finalized = true + обновляем steps
     await updateDailyStep(userId, date, {
-      steps,  // ✅ Теперь обновляем steps!
+      steps,
       is_goal_completed: isGoalCompleted,
       is_streak_completed: isStreakCompleted,
       is_finalized: true
@@ -219,8 +226,8 @@ async function processPreviousDay(userId, day) {
 }
 
 /**
- * Обработка сегодняшнего дня
- * - Начисляем XP (весь или разницу)
+ * ✅ ОБНОВЛЕНО: Обработка сегодняшнего дня
+ * - Начисляем XP: 1 шаг = 0.1 XP
  * - Бонус НЕ начисляем (день не завершен)
  * - is_finalized = false
  */
@@ -248,11 +255,14 @@ async function processTodayDay(userId, day) {
     // Первый заход сегодня → начисляем весь XP
     console.log(`📅 Первый заход сегодня: ${date}, шагов: ${steps}`);
     
+    // ✅ ИЗМЕНЕНО: 1 шаг = 0.1 XP
+    const xpAmount = steps * 0.1;
+    
     await db.query(
-      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
-      [steps, userId]
+      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
+      [xpAmount, steps, userId]
     );
-    xpGained = steps;
+    xpGained = xpAmount;
 
     // Сохраняем с is_finalized = false
     await saveDailyStep(userId, {
@@ -277,11 +287,14 @@ async function processTodayDay(userId, day) {
     console.log(`📅 Повторный заход сегодня: ${date}, было ${oldSteps}, стало ${steps}, разница ${difference}`);
 
     if (difference > 0) {
+      // ✅ ИЗМЕНЕНО: 1 шаг = 0.1 XP
+      const xpAmount = difference * 0.1;
+      
       await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $1 WHERE user_id = $2',
-        [difference, userId]
+        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
+        [xpAmount, difference, userId]
       );
-      xpGained = difference;
+      xpGained = xpAmount;
     }
 
     // Обновляем запись (is_finalized остается false)
@@ -307,6 +320,11 @@ async function updateGoalLevel(userId, goalLevel) {
   );
 }
 
+/**
+ * ✅ ОБНОВЛЕНО: Вычисление уровня и прогресса
+ * - Теперь каждый уровень требует level * 1000 XP (вместо level * 10000)
+ * - XP теперь float, а не int
+ */
 async function getFinalProgress(userId) {
   const result = await db.query(
     'SELECT total_steps, total_xp, current_level FROM user_progress WHERE user_id = $1',
@@ -319,7 +337,7 @@ async function getFinalProgress(userId) {
       total_steps: 0,
       current_xp: 0,
       current_level: 1,
-      xp_to_next_level: 10000,
+      xp_to_next_level: 1000, // ✅ ИЗМЕНЕНО: 1000 вместо 10000
       character_image_url: characterData.image_url,
       character_animation_url: characterData.animation_url,
       current_streak: 0,
@@ -328,19 +346,19 @@ async function getFinalProgress(userId) {
   }
 
   const user = result.rows[0];
-  const totalXP = parseInt(user.total_xp);
+  const totalXP = parseFloat(user.total_xp); // ✅ ИЗМЕНЕНО: parseFloat вместо parseInt
   
-  // Вычисляем уровень и прогресс
+  // ✅ ИЗМЕНЕНО: Вычисляем уровень (каждый уровень требует level * 1000 XP)
   let level = 1;
   let accumulated = 0;
   
-  while (accumulated + (level * 10000) <= totalXP) {
-    accumulated += level * 10000;
+  while (accumulated + (level * 1000) <= totalXP) {
+    accumulated += level * 1000;
     level++;
   }
 
-  const currentXP = totalXP - accumulated;
-  const xpToNext = level * 10000;
+  const currentXP = parseFloat((totalXP - accumulated).toFixed(1));
+  const xpToNext = level * 1000; // ✅ ИЗМЕНЕНО: 1000 вместо 10000
 
   const characterData = getCharacterData(level);
 
