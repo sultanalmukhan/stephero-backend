@@ -1,9 +1,9 @@
-const pool = require('../db'); // Ваш pool для подключения к PostgreSQL
-const { calculateLongestStreak } = require('./syncController'); // Импортируем функцию расчета streak
+const db = require('../db');
+const { calculateLongestStreak } = require('../helpers/dailySteps');
 
 // Вспомогательная функция: получить лучший день пользователя
 async function getBestDaySteps(userId) {
-  const result = await pool.query(
+  const result = await db.query(
     'SELECT MAX(steps) as best_day FROM daily_steps WHERE user_id = $1',
     [userId]
   );
@@ -87,7 +87,7 @@ function formatRequirement(achievement) {
 }
 
 // Основной контроллер
-exports.getAchievements = async (req, res) => {
+async function getAchievements(req, res) {
   const { user_id } = req.query;
 
   // Валидация
@@ -97,7 +97,7 @@ exports.getAchievements = async (req, res) => {
 
   try {
     // 1. Получить статистику пользователя
-    const userProgressResult = await pool.query(
+    const userProgressResult = await db.query(
       'SELECT total_steps FROM user_progress WHERE user_id = $1',
       [user_id]
     );
@@ -116,14 +116,19 @@ exports.getAchievements = async (req, res) => {
       bestDaySteps
     };
 
+    console.log(`📊 Achievements для ${user_id}:`);
+    console.log(`   Total steps: ${totalSteps}`);
+    console.log(`   Longest streak: ${longestStreak}`);
+    console.log(`   Best day: ${bestDaySteps}`);
+
     // 2. Получить все достижения из БД
-    const achievementsResult = await pool.query(
+    const achievementsResult = await db.query(
       'SELECT * FROM achievements ORDER BY category, display_order'
     );
     const allAchievements = achievementsResult.rows;
 
     // 3. Получить разблокированные достижения пользователя
-    const unlockedResult = await pool.query(
+    const unlockedResult = await db.query(
       'SELECT achievement_id, unlocked_at FROM user_achievements WHERE user_id = $1',
       [user_id]
     );
@@ -142,13 +147,14 @@ exports.getAchievements = async (req, res) => {
 
       // Если выполнено, но не разблокировано - разблокировать сейчас
       if (isCompleted && !isUnlocked) {
-        await pool.query(
+        await db.query(
           'INSERT INTO user_achievements (user_id, achievement_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
           [user_id, achievement.id]
         );
         
         // Добавить в map с текущей датой
         unlockedMap[achievement.id] = new Date();
+        console.log(`🎉 Разблокировано достижение: ${achievement.id}`);
       }
 
       // Вычислить прогресс
@@ -190,6 +196,8 @@ exports.getAchievements = async (req, res) => {
       ? Math.floor((totalUnlocked / totalAvailable) * 100) 
       : 0;
 
+    console.log(`✅ Возвращаем: ${totalUnlocked}/${totalAvailable} достижений разблокировано`);
+
     // 7. Вернуть response
     res.json({
       by_steps: bySteps,
@@ -202,7 +210,9 @@ exports.getAchievements = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error in getAchievements:', error);
+    console.error('❌ Error in getAchievements:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-};
+}
+
+module.exports = { getAchievements };
