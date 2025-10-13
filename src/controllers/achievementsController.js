@@ -35,7 +35,7 @@ function calculateProgress(achievement, userStats) {
   const { requirement_type, requirement_value } = achievement;
   
   let current = 0;
-  let required = requirement_value;
+  let required = parseInt(requirement_value);
   
   switch (requirement_type) {
     case 'total_steps':
