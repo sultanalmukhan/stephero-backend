@@ -205,7 +205,9 @@ async function getAchievements(req, res) {
       summary: {
         total_unlocked: totalUnlocked,
         total_available: totalAvailable,
-        completion_percentage: completionPercentage
+        completion_percentage: completionPercentage,
+        best_day_steps: userStats.bestDaySteps,      // ✅ ДОБАВИЛИ
+        longest_streak: userStats.longestStreak      // ✅ ДОБАВИЛИ
       }
     });
 
