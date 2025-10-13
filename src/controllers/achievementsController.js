@@ -106,7 +106,7 @@ async function getAchievements(req, res) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const totalSteps = userProgressResult.rows[0].total_steps || 0;
+    const totalSteps = parseInt(userProgressResult.rows[0].total_steps) || 0;
     const longestStreak = await calculateLongestStreak(user_id);
     const bestDaySteps = await getBestDaySteps(user_id);
 
