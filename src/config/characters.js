@@ -21,16 +21,16 @@ const CHARACTER_IMAGES = {
 
 // 🎞️ URL анимаций персонажей для каждого уровня
 const CHARACTER_ANIMATIONS = {
-  1: `${CLOUDINARY_VIDEO_BASE}/v1760020443/animation_1_qh2qte.mp4`,
-  2: `${CLOUDINARY_VIDEO_BASE}/v1760020529/animation_2_bprbne.mp4`,
-  3: `${CLOUDINARY_VIDEO_BASE}/v1760020529/animation_3_maa7fc.mp4`,
-  4: `${CLOUDINARY_VIDEO_BASE}/v1760020530/animation_4_tvo9qu.mp4`,
-  5: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_5_ju8rje.mp4`,
-  6: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_6_fatp3t.mp4`,
-  7: `${CLOUDINARY_VIDEO_BASE}/v1760020533/animation_7_aha0sp.mp4`,
-  8: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_8_oajcso.mp4`,
-  9: `${CLOUDINARY_VIDEO_BASE}/v1760020531/animation_9_imhxuu.mp4`,
-  10: `${CLOUDINARY_VIDEO_BASE}/v1760020533/animation_10_blkmjk.mp4`,
+  1: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_1_mwgkqi.mp4`,
+  2: `${CLOUDINARY_VIDEO_BASE}/v1760456810/animation_2_dg8cb4.mp4`,
+  3: `${CLOUDINARY_VIDEO_BASE}/v1760456809/animation_3_gifsxx.mp4`,
+  4: `${CLOUDINARY_VIDEO_BASE}/v1760456810/animation_4_gf6dko.mp4`,
+  5: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_5_rt18cq.mp4`,
+  6: `${CLOUDINARY_VIDEO_BASE}/v1760456815/animation_6_mx5igh.mp4`,
+  7: `${CLOUDINARY_VIDEO_BASE}/v1760456809/animation_7_lmxleq.mp4`,
+  8: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_8_pzvj6d.mp4`,
+  9: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_9_ogvri6.mp4`,
+  10: `${CLOUDINARY_VIDEO_BASE}/v1760456809/animation_10_mxhqpk.mp4`,
 };
 
 // Имена персонажей для каждого уровня
