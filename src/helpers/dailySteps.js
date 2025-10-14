@@ -119,10 +119,8 @@ async function updateDailyStep(userId, date, updates) {
 }
 
 /**
- * ✅ ИСПРАВЛЕНО: Подсчет текущего streak (дней подряд)
- * - Определяет "сегодня" из данных БД (не финализированный день)
- * - Убраны timezone проблемы
- * - PostgreSQL Date объекты конвертируются в строки
+ * ✅ ОБНОВЛЕНО: Подсчет текущего streak с учетом Freeze
+ * - День считается выполненным если is_streak_completed ИЛИ is_freeze_used
  */
 async function calculateCurrentStreak(userId) {
   try {
@@ -130,7 +128,7 @@ async function calculateCurrentStreak(userId) {
     console.log('   User ID:', userId);
     
     const query = `
-      SELECT date, steps, steps_goal, is_streak_completed, is_finalized
+      SELECT date, steps, steps_goal, is_streak_completed, is_finalized, is_freeze_used
       FROM daily_steps
       WHERE user_id = $1
       ORDER BY date DESC
@@ -148,19 +146,14 @@ async function calculateCurrentStreak(userId) {
       return 0;
     }
     
-    // ✅ ИСПРАВЛЕНИЕ: Определяем "сегодня" из данных БД
-    // Ищем первый не финализированный день (это сегодня)
-    // Если все финализированы, берем самую свежую дату
     let todayStr;
     const firstDayDate = new Date(days[0].date);
     const firstDayStr = formatDateLocal(firstDayDate);
     
     if (!days[0].is_finalized) {
-      // Первый день не финализирован = это сегодня
       todayStr = firstDayStr;
       console.log('   📅 Today (from non-finalized):', todayStr);
     } else {
-      // Все дни финализированы, берем день после последнего
       const nextDay = new Date(firstDayDate);
       nextDay.setDate(nextDay.getDate() + 1);
       todayStr = formatDateLocal(nextDay);
@@ -171,7 +164,6 @@ async function calculateCurrentStreak(userId) {
     let expectedDate = new Date(firstDayDate);
     expectedDate.setHours(0, 0, 0, 0);
     
-    // Если первый день в БД не сегодня, начинаем со вчера
     if (firstDayStr !== todayStr) {
       expectedDate.setDate(expectedDate.getDate() - 1);
       console.log('   ⏮️  Starting from:', formatDateLocal(expectedDate));
@@ -190,15 +182,14 @@ async function calculateCurrentStreak(userId) {
         break;
       }
       
-      // Для финализированных дней - смотрим на флаг
-      // Для сегодняшнего дня (is_finalized = false) - пересчитываем
       let isStreakValid = false;
       
       if (day.is_finalized) {
-        isStreakValid = day.is_streak_completed;
-        console.log(`      Finalized: ${isStreakValid ? '✅' : '❌'} (from flag)`);
+        // ✅ ОБНОВЛЕНО: Учитываем is_freeze_used
+        isStreakValid = day.is_streak_completed || day.is_freeze_used;
+        const reason = day.is_freeze_used ? 'freeze used' : 'from flag';
+        console.log(`      Finalized: ${isStreakValid ? '✅' : '❌'} (${reason})`);
       } else {
-        // Сегодняшний день - пересчитываем динамически
         const threshold = day.steps_goal * 0.5;
         isStreakValid = day.steps >= threshold;
         console.log(`      Today: ${day.steps} >= ${threshold}? ${isStreakValid ? '✅' : '❌'}`);
@@ -224,10 +215,8 @@ async function calculateCurrentStreak(userId) {
 }
 
 /**
- * ✅ ИСПРАВЛЕНО: Подсчет самого длинного streak за все время
- * - Убраны timezone проблемы
- * - Исправлен баг с undefined prevDateStr
- * - PostgreSQL Date объекты конвертируются в строки
+ * ✅ ОБНОВЛЕНО: Подсчет самого длинного streak с учетом Freeze
+ * - День считается выполненным если is_streak_completed ИЛИ is_freeze_used
  */
 async function calculateLongestStreak(userId) {
   try {
@@ -235,7 +224,7 @@ async function calculateLongestStreak(userId) {
     console.log('   User ID:', userId);
     
     const query = `
-      SELECT date, is_streak_completed
+      SELECT date, is_streak_completed, is_freeze_used
       FROM daily_steps
       WHERE user_id = $1 AND is_finalized = true
       ORDER BY date ASC
@@ -261,13 +250,11 @@ async function calculateLongestStreak(userId) {
       const currentDateStr = formatDateLocal(dayDate);
       
       if (prevDateStr) {
-        // Парсим предыдущую дату и добавляем 1 день
         const [year, month, dayNum] = prevDateStr.split('-').map(Number);
         const prevDateObj = new Date(year, month - 1, dayNum);
         prevDateObj.setDate(prevDateObj.getDate() + 1);
         const expectedDateStr = formatDateLocal(prevDateObj);
         
-        // Проверяем последовательность дней
         if (currentDateStr !== expectedDateStr) {
           console.log(`   ⚠️  Gap detected: ${prevDateStr} -> ${currentDateStr}, resetting streak`);
           maxStreak = Math.max(maxStreak, currentStreak);
@@ -275,9 +262,13 @@ async function calculateLongestStreak(userId) {
         }
       }
       
-      if (day.is_streak_completed) {
+      // ✅ ОБНОВЛЕНО: Учитываем is_freeze_used
+      const isStreakValid = day.is_streak_completed || day.is_freeze_used;
+      
+      if (isStreakValid) {
         currentStreak++;
-        console.log(`   ✅ ${currentDateStr}: streak continues (${currentStreak})`);
+        const reason = day.is_freeze_used ? '(freeze)' : '';
+        console.log(`   ✅ ${currentDateStr}: streak continues (${currentStreak}) ${reason}`);
       } else {
         console.log(`   ❌ ${currentDateStr}: streak broken`);
         maxStreak = Math.max(maxStreak, currentStreak);
@@ -297,10 +288,162 @@ async function calculateLongestStreak(userId) {
   }
 }
 
+/**
+ * 🧊 Обработка системы Freeze для пользователя
+ * - Вычисляет периоды начисления (каждые 14 дней)
+ * - Автоматически использует Freeze на провальные дни
+ * - Обновляет freeze_count и last_freeze_earned_at
+ */
+async function processFreezeSystem(userId) {
+  try {
+    console.log('\n🧊 === processFreezeSystem START ===');
+    console.log('   User ID:', userId);
+
+    // 1. Получить текущее состояние Freeze
+    const userResult = await db.query(
+      'SELECT freeze_count, last_freeze_earned_at FROM user_progress WHERE user_id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      console.log('   ❌ User not found');
+      return { freezeCount: 0, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
+    }
+
+    const user = userResult.rows[0];
+    let freezeCount = user.freeze_count || 0;
+    let lastFreezeEarnedAt = user.last_freeze_earned_at;
+
+    console.log('   Current freeze_count:', freezeCount);
+    console.log('   Last freeze earned at:', lastFreezeEarnedAt);
+
+    // 2. Если первый sync - инициализировать
+    if (!lastFreezeEarnedAt) {
+      console.log('   ⚙️  First sync - initializing freeze system');
+      const now = new Date();
+      await db.query(
+        'UPDATE user_progress SET last_freeze_earned_at = $1 WHERE user_id = $2',
+        [now, userId]
+      );
+      console.log('   ✅ Freeze system initialized');
+      console.log('🧊 === processFreezeSystem END ===\n');
+      return { freezeCount: 0, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
+    }
+
+    // 3. Вычислить сколько периодов прошло
+    const now = new Date();
+    const lastEarned = new Date(lastFreezeEarnedAt);
+    const daysSince = Math.floor((now - lastEarned) / (1000 * 60 * 60 * 24));
+    const periods = Math.floor(daysSince / 14);
+
+    console.log('   Days since last earned:', daysSince);
+    console.log('   Periods to process:', periods);
+
+    if (periods === 0) {
+      console.log('   ℹ️  No new periods to process');
+      console.log('🧊 === processFreezeSystem END ===\n');
+      return { freezeCount, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
+    }
+
+    // 4. Получить все дни с момента последнего начисления до вчера
+    const startDate = formatDateLocal(lastEarned);
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const endDate = formatDateLocal(yesterday);
+
+    console.log('   Processing days from', startDate, 'to', endDate);
+
+    const daysResult = await db.query(
+      `SELECT date, steps, steps_goal, is_streak_completed, is_finalized, is_freeze_used
+       FROM daily_steps
+       WHERE user_id = $1 AND date >= $2 AND date <= $3
+       ORDER BY date ASC`,
+      [userId, startDate, endDate]
+    );
+
+    const days = daysResult.rows;
+    console.log('   Days found:', days.length);
+
+    // 5. Симулировать начисление и использование Freeze
+    let tempFreezeCount = freezeCount;
+    let periodsProcessed = 0;
+    let freezesEarned = 0;
+    let freezesUsed = 0;
+    const freezeUsedDays = [];
+
+    for (const day of days) {
+      const dayDate = new Date(day.date);
+      const daysSinceStart = Math.floor((dayDate - lastEarned) / (1000 * 60 * 60 * 24));
+      const periodForThisDay = Math.floor(daysSinceStart / 14);
+
+      // Проверить не пора ли начислить Freeze
+      if (periodForThisDay > periodsProcessed && periodsProcessed < periods) {
+        if (tempFreezeCount < 4) {
+          tempFreezeCount++;
+          freezesEarned++;
+          console.log(`   🎁 Freeze earned on period ${periodForThisDay + 1} (count: ${tempFreezeCount})`);
+        } else {
+          console.log(`   ⚠️  Freeze limit reached (4), cannot earn more`);
+        }
+        periodsProcessed = periodForThisDay;
+      }
+
+      // Проверить нужно ли использовать Freeze
+      const dayStr = formatDateLocal(dayDate);
+      if (!day.is_streak_completed && day.is_finalized && !day.is_freeze_used) {
+        if (tempFreezeCount > 0) {
+          tempFreezeCount--;
+          freezesUsed++;
+          await db.query(
+            'UPDATE daily_steps SET is_freeze_used = true WHERE user_id = $1 AND date = $2',
+            [userId, day.date]
+          );
+          freezeUsedDays.push(dayStr);
+          console.log(`   ❄️  Freeze used on ${dayStr} (remaining: ${tempFreezeCount})`);
+        } else {
+          console.log(`   ❌ No Freeze available for ${dayStr}, streak broken`);
+        }
+      }
+    }
+
+    // 6. Обновить last_freeze_earned_at и freeze_count
+    const newLastFreezeEarnedAt = new Date(lastEarned);
+    newLastFreezeEarnedAt.setDate(newLastFreezeEarnedAt.getDate() + (periods * 14));
+
+    await db.query(
+      `UPDATE user_progress 
+       SET freeze_count = $1, 
+           last_freeze_earned_at = $2,
+           total_freezes_earned = total_freezes_earned + $3,
+           total_freezes_used = total_freezes_used + $4
+       WHERE user_id = $5`,
+      [tempFreezeCount, newLastFreezeEarnedAt, freezesEarned, freezesUsed, userId]
+    );
+
+    console.log('   ✅ Final freeze_count:', tempFreezeCount);
+    console.log('   ✅ Freezes earned this sync:', freezesEarned);
+    console.log('   ✅ Freezes used this sync:', freezesUsed);
+    console.log('   ✅ New last_freeze_earned_at:', formatDateLocal(newLastFreezeEarnedAt));
+    console.log('🧊 === processFreezeSystem END ===\n');
+
+    return {
+      freezeCount: tempFreezeCount,
+      freezeUsedDays,
+      freezesEarned,
+      freezesUsed
+    };
+
+  } catch (error) {
+    console.error('❌ Error in processFreezeSystem:', error);
+    return { freezeCount: 0, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
+  }
+}
+
 module.exports = {
   saveDailyStep,
   updateDailyStep,
   calculateCurrentStreak,
   calculateLongestStreak,
+  processFreezeSystem,  // ✅ Добавили
   GOAL_CONFIG
 };
