@@ -5,7 +5,7 @@ const {
   updateDailyStep,
   calculateCurrentStreak, 
   calculateLongestStreak,
-  processFreezeSystem,  // ✅ ДОБАВИЛИ
+  processFreezeSystem,
   GOAL_CONFIG 
 } = require('../helpers/dailySteps');
 
@@ -28,12 +28,13 @@ async function syncSteps(req, res) {
     // Создать пользователя если не существует
     await ensureUserExists(user_id);
 
-    // 🧊 ДОБАВЛЕНО: Обработать систему Freeze ПЕРЕД обработкой дней
+    // 🧊 Обработать систему Freeze ПЕРЕД обработкой дней
     const freezeResult = await processFreezeSystem(user_id);
 
     // Получить состояние ДО изменений
     const previousProgress = await getCurrentProgress(user_id);
     const previousXP = previousProgress.current_xp;
+    const previousCredits = previousProgress.total_credits || 0;  // 💰 ДОБАВИЛИ
 
     // Обновить goal_level если изменился
     await updateGoalLevel(user_id, current_goal_level);
@@ -48,13 +49,16 @@ async function syncSteps(req, res) {
 
     let totalXPGained = 0;
     let bonusXPEarned = 0;
+    let totalCreditsEarned = 0;  // 💰 ДОБАВИЛИ
     const bonusDetails = [];
 
     // 1. Обработка завершенных дней (все кроме последнего)
     for (const day of previousDays) {
-      const result = await processPreviousDay(user_id, day);
+      // 💰 ОБНОВИЛИ: добавили текущий уровень в параметры
+      const result = await processPreviousDay(user_id, day, previousProgress.current_level);
       totalXPGained += result.xpGained;
       bonusXPEarned += result.bonusXP;
+      totalCreditsEarned += result.creditsEarned;  // 💰 ДОБАВИЛИ
       
       if (result.bonusXP > 0 || !result.goalReached) {
         bonusDetails.push({
@@ -80,7 +84,7 @@ async function syncSteps(req, res) {
     const todayGoalReached = today.steps >= todayGoal;
     const isStreakCompletedToday = today.steps >= (todayGoal * 0.5);
 
-    // 🧊 ДОБАВЛЕНО: Вычислить дни до следующего Freeze
+    // 🧊 Вычислить дни до следующего Freeze
     const userProgressResult = await db.query(
       'SELECT last_freeze_earned_at FROM user_progress WHERE user_id = $1',
       [user_id]
@@ -105,6 +109,10 @@ async function syncSteps(req, res) {
       bonus_xp_earned: bonusXPEarned,
       bonus_details: bonusDetails,
       
+      // 💰 ДОБАВИЛИ: Credits
+      previous_credits: previousCredits,
+      credits_earned: totalCreditsEarned,
+      
       // Сегодняшний день
       today_steps: today.steps,
       today_goal: todayGoal,
@@ -112,7 +120,7 @@ async function syncSteps(req, res) {
       today_goal_reached: todayGoalReached,
       is_streak_completed_today: isStreakCompletedToday,
 
-      // 🧊 ДОБАВЛЕНО: Freeze status
+      // 🧊 Freeze status
       freeze_status: {
         current_freeze_count: freezeResult.freezeCount,
         max_freeze_count: 4,
@@ -136,21 +144,29 @@ async function syncSteps(req, res) {
  * ✅ ОБНОВЛЕНО: Обработка завершенного дня (не сегодняшний)
  * - Начисляем XP: 1 шаг = 0.1 XP
  * - Начисляем бонус (если цель выполнена)
+ * - 💰 Начисляем Credits (если цель выполнена 100%)
  * - Финализируем день (is_finalized = true)
  */
-async function processPreviousDay(userId, day) {
+async function processPreviousDay(userId, day, currentLevel) {  // 💰 ДОБАВИЛИ currentLevel
   const { date, steps, goal_level } = day;
   
   // Валидация goal_level
   if (!GOAL_CONFIG[goal_level]) {
     console.warn(`Неверный goal_level: ${goal_level} для дня ${date}`);
-    return { xpGained: 0, bonusXP: 0, goalReached: false, stepsGoal: 0 };
+    return { xpGained: 0, bonusXP: 0, creditsEarned: 0, goalReached: false, stepsGoal: 0 };  // 💰 ДОБАВИЛИ creditsEarned
   }
 
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
   const bonusPercent = GOAL_CONFIG[goal_level].bonus;
   const isGoalCompleted = steps >= stepsGoal;
   const isStreakCompleted = steps >= (stepsGoal * 0.5);
+
+  // 💰 ДОБАВИЛИ: Вычисление Credits
+  let creditsEarned = 0;
+  if (isGoalCompleted) {
+    creditsEarned = (currentLevel * 10) + ((goal_level - 1) * 2);
+    console.log(`💰 Credits calculated: level=${currentLevel}, goal_level=${goal_level} → ${creditsEarned} credits`);
+  }
 
   // Проверяем существует ли день в БД
   const existingDay = await db.query(
@@ -167,9 +183,10 @@ async function processPreviousDay(userId, day) {
     
     const xpAmount = steps * 0.1;
     
+    // 💰 ОБНОВИЛИ: добавили credits в UPDATE
     await db.query(
-      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
-      [xpAmount, steps, userId]
+      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
+      [xpAmount, steps, creditsEarned, userId]
     );
     xpGained = xpAmount;
 
@@ -180,17 +197,20 @@ async function processPreviousDay(userId, day) {
         [bonusXP, userId]
       );
       console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
+      console.log(`💰 Credits начислены за ${date}: ${creditsEarned} credits`);  // 💰 ДОБАВИЛИ
     } else {
-      console.log(`ℹ️ День ${date}: цель не выполнена, бонус не начислен`);
+      console.log(`ℹ️ День ${date}: цель не выполнена, бонус и credits не начислены`);
     }
 
+    // 💰 ОБНОВИЛИ: добавили credits_earned в saveDailyStep
     await saveDailyStep(userId, {
       date,
       steps,
       goal_level,
       is_goal_completed: isGoalCompleted,
       is_streak_completed: isStreakCompleted,
-      is_finalized: true
+      is_finalized: true,
+      credits_earned: creditsEarned  // 💰 ДОБАВИЛИ
     });
 
   } else {
@@ -199,7 +219,7 @@ async function processPreviousDay(userId, day) {
 
     if (isFinalized) {
       console.log(`ℹ️ День ${date} уже был обработан ранее (дубликат)`);
-      return { xpGained: 0, bonusXP: 0, goalReached: isGoalCompleted, stepsGoal };
+      return { xpGained: 0, bonusXP: 0, creditsEarned: 0, goalReached: isGoalCompleted, stepsGoal };  // 💰 ДОБАВИЛИ creditsEarned
     }
 
     console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов, стало ${steps} шагов)`);
@@ -209,9 +229,10 @@ async function processPreviousDay(userId, day) {
     if (difference > 0) {
       const xpAmount = difference * 0.1;
       
+      // 💰 ОБНОВИЛИ: добавили credits в UPDATE
       await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
-        [xpAmount, difference, userId]
+        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
+        [xpAmount, difference, creditsEarned, userId]
       );
       xpGained = xpAmount;
       console.log(`✅ Начислен XP за разницу: ${xpAmount} (${difference} шагов)`);
@@ -226,25 +247,29 @@ async function processPreviousDay(userId, day) {
         [bonusXP, userId]
       );
       console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
+      console.log(`💰 Credits начислены за ${date}: ${creditsEarned} credits`);  // 💰 ДОБАВИЛИ
     } else {
-      console.log(`ℹ️ День ${date}: цель не выполнена, бонус не начислен`);
+      console.log(`ℹ️ День ${date}: цель не выполнена, бонус и credits не начислены`);
     }
 
+    // 💰 ОБНОВИЛИ: добавили credits_earned в updateDailyStep
     await updateDailyStep(userId, date, {
       steps,
       is_goal_completed: isGoalCompleted,
       is_streak_completed: isStreakCompleted,
-      is_finalized: true
+      is_finalized: true,
+      credits_earned: creditsEarned  // 💰 ДОБАВИЛИ
     });
   }
 
-  return { xpGained, bonusXP, goalReached: isGoalCompleted, stepsGoal };
+  return { xpGained, bonusXP, creditsEarned, goalReached: isGoalCompleted, stepsGoal };  // 💰 ДОБАВИЛИ creditsEarned
 }
 
 /**
- * ✅ ОБНОВЛЕНО: Обработка сегодняшнего дня
+ * ✅ Обработка сегодняшнего дня
  * - Начисляем XP: 1 шаг = 0.1 XP
  * - Бонус НЕ начисляем (день не завершен)
+ * - 💰 Credits НЕ начисляем (день не завершен)
  * - is_finalized = false
  */
 async function processTodayDay(userId, day) {
@@ -284,6 +309,7 @@ async function processTodayDay(userId, day) {
       is_goal_completed: isGoalCompleted,
       is_streak_completed: isStreakCompleted,
       is_finalized: false
+      // 💰 credits_earned не передаем, будет 0 по умолчанию
     });
 
   } else {
@@ -312,6 +338,7 @@ async function processTodayDay(userId, day) {
       is_goal_completed: isGoalCompleted,
       is_streak_completed: isStreakCompleted,
       is_finalized: false
+      // 💰 credits_earned не передаем, сегодня не начисляем
     });
   }
 
@@ -330,8 +357,9 @@ async function updateGoalLevel(userId, goalLevel) {
 }
 
 async function getFinalProgress(userId) {
+  // 💰 ОБНОВИЛИ: добавили total_credits в SELECT
   const result = await db.query(
-    'SELECT total_steps, total_xp, current_level FROM user_progress WHERE user_id = $1',
+    'SELECT total_steps, total_xp, current_level, total_credits FROM user_progress WHERE user_id = $1',
     [userId]
   );
 
@@ -342,6 +370,7 @@ async function getFinalProgress(userId) {
       current_xp: 0,
       current_level: 1,
       xp_to_next_level: 1000,
+      total_credits: 0,  // 💰 ДОБАВИЛИ
       character_image_url: characterData.image_url,
       character_animation_url: characterData.animation_url,
       current_streak: 0,
@@ -373,6 +402,7 @@ async function getFinalProgress(userId) {
     current_xp: currentXP,
     current_level: level,
     xp_to_next_level: xpToNext,
+    total_credits: parseInt(user.total_credits) || 0,  // 💰 ДОБАВИЛИ
     character_image_url: characterData.image_url,
     character_animation_url: characterData.animation_url,
     current_streak: currentStreak,
