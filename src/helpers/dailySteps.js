@@ -18,7 +18,8 @@ function formatDateLocal(date) {
 }
 
 /**
- * Сохранить день в базу (для новых дней)
+ * ✅ ОБНОВЛЕНО: Сохранить день в базу (для новых дней)
+ * Добавлена поддержка credits_earned
  */
 async function saveDailyStep(userId, dayData) {
   const { 
@@ -27,7 +28,8 @@ async function saveDailyStep(userId, dayData) {
     goal_level, 
     is_goal_completed, 
     is_streak_completed,
-    is_finalized 
+    is_finalized,
+    credits_earned = 0  // ✨ ДОБАВИЛИ
   } = dayData;
   
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
@@ -35,8 +37,8 @@ async function saveDailyStep(userId, dayData) {
   try {
     const query = `
       INSERT INTO daily_steps 
-        (user_id, date, steps, goal_level, steps_goal, is_goal_completed, is_streak_completed, is_finalized)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (user_id, date, steps, goal_level, steps_goal, is_goal_completed, is_streak_completed, is_finalized, credits_earned)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
     
@@ -48,10 +50,11 @@ async function saveDailyStep(userId, dayData) {
       stepsGoal,
       is_goal_completed,
       is_streak_completed,
-      is_finalized
+      is_finalized,
+      credits_earned  // ✨ ДОБАВИЛИ
     ]);
     
-    console.log(`✅ Сохранен день: ${date}, steps: ${steps}, finalized: ${is_finalized}`);
+    console.log(`✅ Сохранен день: ${date}, steps: ${steps}, finalized: ${is_finalized}, credits: ${credits_earned}`);
     return result.rows[0];
   } catch (error) {
     console.error('❌ Ошибка при сохранении daily_step:', error);
@@ -60,14 +63,16 @@ async function saveDailyStep(userId, dayData) {
 }
 
 /**
- * Обновить существующий день (для обновления сегодняшнего дня или финализации)
+ * ✅ ОБНОВЛЕНО: Обновить существующий день (для обновления сегодняшнего дня или финализации)
+ * Добавлена поддержка credits_earned
  */
 async function updateDailyStep(userId, date, updates) {
   const { 
     steps, 
     is_goal_completed, 
     is_streak_completed, 
-    is_finalized 
+    is_finalized,
+    credits_earned  // ✨ ДОБАВИЛИ
   } = updates;
   
   try {
@@ -96,6 +101,13 @@ async function updateDailyStep(userId, date, updates) {
     if (is_finalized !== undefined) {
       setClauses.push(`is_finalized = $${paramIndex}`);
       values.push(is_finalized);
+      paramIndex++;
+    }
+
+    // ✨ ДОБАВИЛИ
+    if (credits_earned !== undefined) {
+      setClauses.push(`credits_earned = $${paramIndex}`);
+      values.push(credits_earned);
       paramIndex++;
     }
 
@@ -444,6 +456,6 @@ module.exports = {
   updateDailyStep,
   calculateCurrentStreak,
   calculateLongestStreak,
-  processFreezeSystem,  // ✅ Добавили
+  processFreezeSystem,
   GOAL_CONFIG
 };
