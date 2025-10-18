@@ -11,7 +11,23 @@ const {
 
 // 🔒 Константы для subscription cap
 const FREE_TIER_MAX_LEVEL = 3;
-const FREE_TIER_MAX_XP = 5999.9; // Максимум для уровня 3
+
+const LEVEL_XP_REQUIREMENTS = {
+  1: 0,
+  2: 8400,
+  3: 20400,
+  4: 37200,
+  5: 61200,
+  6: 94800,
+  7: 142800,
+  8: 214800,
+  9: 310800,
+  10: 438000
+};
+
+const FREE_TIER_MAX_XP = LEVEL_XP_REQUIREMENTS[4] - 0.1; // 37199.9 XP
+
+console.log(`🔒 Free tier cap: Level ${FREE_TIER_MAX_LEVEL}, Max XP: ${FREE_TIER_MAX_XP}`);
 
 async function syncSteps(req, res) {
   try {
@@ -52,7 +68,7 @@ async function syncSteps(req, res) {
     const previousDays = completed_days.slice(0, -1);
 
     console.log(`📊 Синхронизация для ${user_id}:`);
-    console.log(`   Подписка: ${has_subscription ? '✅ Активна' : '❌ Нет'}`);  // 🔒 ДОБАВИЛИ
+    console.log(`   Подписка: ${has_subscription ? '✅ Активна' : '❌ Нет'}`);
     console.log(`   Завершенных дней: ${previousDays.length}`);
     console.log(`   Сегодня: ${today.date} (${today.steps} шагов)`);
 
@@ -204,7 +220,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
   const isGoalCompleted = steps >= stepsGoal;
   const isStreakCompleted = steps >= (stepsGoal * 0.5);
 
-  // 🔒 Credits и бонусы только для подписчиков или если еще не достигли cap
+  // 🔒 Credits и бонусы только для подписчиков
   let creditsEarned = 0;
   let canEarnBonus = hasSubscription;
   
@@ -238,7 +254,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
         // Уже на лимите - весь XP теряется
         xpLost = xpAmount;
         xpAmount = 0;
-        console.log(`🔒 Level cap reached: ${xpAmount} XP lost`);
+        console.log(`🔒 Level cap reached: ${xpLost} XP lost`);
       } else if (actualTotalXP + xpAmount > FREE_TIER_MAX_XP) {
         // Частично можно начислить
         const allowedXP = FREE_TIER_MAX_XP - actualTotalXP;
@@ -514,14 +530,10 @@ async function processTodayDay(userId, day, hasSubscription, currentProgress) {
 }
 
 /**
- * 🔒 НОВАЯ ФУНКЦИЯ: Вычислить accumulated XP для уровня
+ * 🔒 ОБНОВЛЕНО: Вычислить accumulated XP для уровня
  */
 function getAccumulatedXP(level) {
-  let accumulated = 0;
-  for (let i = 1; i < level; i++) {
-    accumulated += i * 1000;
-  }
-  return accumulated;
+  return LEVEL_XP_REQUIREMENTS[level] || 0;
 }
 
 async function updateGoalLevel(userId, goalLevel) {
@@ -535,6 +547,9 @@ async function updateGoalLevel(userId, goalLevel) {
   );
 }
 
+/**
+ * 🔄 ОБНОВЛЕНО: Расчет прогресса с новой таблицей уровней
+ */
 async function getFinalProgress(userId) {
   const result = await db.query(
     'SELECT total_steps, total_xp, current_level, total_credits FROM user_progress WHERE user_id = $1',
@@ -547,8 +562,8 @@ async function getFinalProgress(userId) {
       total_steps: 0,
       current_xp: 0,
       current_level: 1,
-      xp_to_next_level: 1000,
-      total_xp: 0,  // 🔒 ДОБАВИЛИ для внутренних вычислений
+      xp_to_next_level: LEVEL_XP_REQUIREMENTS[2], // 8400
+      total_xp: 0,
       total_credits: 0,
       character_image_url: characterData.image_url,
       character_animation_url: characterData.animation_url,
@@ -560,16 +575,18 @@ async function getFinalProgress(userId) {
   const user = result.rows[0];
   const totalXP = parseFloat(user.total_xp);
   
+  // 🔄 ОБНОВИЛИ: используем LEVEL_XP_REQUIREMENTS вместо формулы
   let level = 1;
-  let accumulated = 0;
   
-  while (accumulated + (level * 1000) <= totalXP) {
-    accumulated += level * 1000;
-    level++;
+  for (let i = 10; i >= 1; i--) {
+    if (totalXP >= LEVEL_XP_REQUIREMENTS[i]) {
+      level = i;
+      break;
+    }
   }
 
-  const currentXP = parseFloat((totalXP - accumulated).toFixed(1));
-  const xpToNext = level * 1000;
+  const currentXP = parseFloat((totalXP - LEVEL_XP_REQUIREMENTS[level]).toFixed(1));
+  const xpToNext = level < 10 ? LEVEL_XP_REQUIREMENTS[level + 1] - LEVEL_XP_REQUIREMENTS[level] : 0;
 
   const characterData = getCharacterData(level);
 
@@ -581,7 +598,7 @@ async function getFinalProgress(userId) {
     current_xp: currentXP,
     current_level: level,
     xp_to_next_level: xpToNext,
-    total_xp: totalXP,  // 🔒 ДОБАВИЛИ для внутренних вычислений
+    total_xp: totalXP,
     total_credits: parseInt(user.total_credits) || 0,
     character_image_url: characterData.image_url,
     character_animation_url: characterData.animation_url,
