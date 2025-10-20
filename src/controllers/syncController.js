@@ -1,5 +1,5 @@
 const db = require('../db');
-const { getCharacterData } = require('../config/characters');
+const { getCharacterData, LEVEL_XP_REQUIREMENTS } = require('../config/characters');
 const { 
   saveDailyStep,
   updateDailyStep,
@@ -11,19 +11,6 @@ const {
 
 // 🔒 Константы для subscription cap
 const FREE_TIER_MAX_LEVEL = 3;
-
-const LEVEL_XP_REQUIREMENTS = {
-  1: 0,
-  2: 8400,
-  3: 20400,
-  4: 37200,
-  5: 61200,
-  6: 94800,
-  7: 142800,
-  8: 214800,
-  9: 310800,
-  10: 438000
-};
 
 const FREE_TIER_MAX_XP = LEVEL_XP_REQUIREMENTS[4] - 0.1; // 37199.9 XP
 
