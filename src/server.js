@@ -4,7 +4,8 @@ require('dotenv').config();
 
 const syncRoutes = require('./routes/sync');
 const versionRoutes = require('./routes/version');
-const achievementsRoutes = require('./routes/achievements'); // ✅ Добавили
+const achievementsRoutes = require('./routes/achievements');
+const charactersRoutes = require('./routes/characters'); // ✅ ДОБАВИЛИ
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +18,13 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({ 
     message: '🚀 StepHero API работает!',
-    version: '1.0.0'
+    version: '1.0.0',
+    endpoints: [
+      'POST /api/sync',
+      'GET /api/version/check', 
+      'GET /api/achievements',
+      'GET /api/characters'  // ✅ ДОБАВИЛИ
+    ]
   });
 });
 
@@ -28,7 +35,8 @@ app.get('/health', (req, res) => {
 // API роуты
 app.use('/api', syncRoutes);
 app.use('/api/version', versionRoutes);
-app.use('/api/achievements', achievementsRoutes); // ✅ Добавили
+app.use('/api/achievements', achievementsRoutes);
+app.use('/api/characters', charactersRoutes); // ✅ ДОБАВИЛИ
 
 // Запуск сервера
 app.listen(PORT, () => {
