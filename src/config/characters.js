@@ -6,16 +6,16 @@ const CLOUDINARY_VIDEO_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAM
 
 // URL картинок персонажей для каждого уровня
 const CHARACTER_IMAGES = {
-  1: `${CLOUDINARY_BASE}/home_1_huzth0.png`,
-  2: `${CLOUDINARY_BASE}/home_2_oxfuh9.png`,
-  3: `${CLOUDINARY_BASE}/home_3_ksufad.png`,
-  4: `${CLOUDINARY_BASE}/home_4_qfz1ee.png`,
-  5: `${CLOUDINARY_BASE}/home_5_g8ukuy.png`,
-  6: `${CLOUDINARY_BASE}/home_6_dym98o.png`,
-  7: `${CLOUDINARY_BASE}/home_7_m7glsf.png`,
-  8: `${CLOUDINARY_BASE}/home_8_acngml.png`,
-  9: `${CLOUDINARY_BASE}/home_9_joecf5.png`,
-  10: `${CLOUDINARY_BASE}/home_10_oad4ii.png`,
+  1: `${CLOUDINARY_BASE}/home_1_ol52o7.png`,
+  2: `${CLOUDINARY_BASE}/home_2_r2zd4t.png`,
+  3: `${CLOUDINARY_BASE}/home_3_gwfzgv.png`,
+  4: `${CLOUDINARY_BASE}/home_4_mi1alr.png`,
+  5: `${CLOUDINARY_BASE}/home_5_cltq8l.png`,
+  6: `${CLOUDINARY_BASE}/home_6_pktwtb.png`,
+  7: `${CLOUDINARY_BASE}/home_7_lseqbj.png`,
+  8: `${CLOUDINARY_BASE}/home_8_xxrx4n.png`,
+  9: `${CLOUDINARY_BASE}/home_9_sub0yz.png`,
+  10: `${CLOUDINARY_BASE}/home_10_r3he8f.png`,
 };
 
 // 🔒 URL картинок для закрытых персонажей
