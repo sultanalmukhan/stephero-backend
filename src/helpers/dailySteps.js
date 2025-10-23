@@ -131,8 +131,18 @@ async function updateDailyStep(userId, date, updates) {
 }
 
 /**
- * ✅ ОБНОВЛЕНО: Подсчет текущего streak с учетом Freeze
+ * ✅ ИСПРАВЛЕНО: Подсчет текущего streak с учетом Freeze
+ * 
+ * ЛОГИКА:
+ * - Если сегодняшний день (не финализирован) НЕ выполнен → пропускаем его, считаем со вчера
+ * - Если сегодняшний день (не финализирован) выполнен → включаем его в streak
+ * - Streak сбрасывается только когда финализированный день не выполнен (и нет freeze)
  * - День считается выполненным если is_streak_completed ИЛИ is_freeze_used
+ * 
+ * ПРИМЕРЫ:
+ * День 1-10: выполнены → streak = 10
+ * День 11 (сегодня): 1000/5000 шагов → показываем streak = 10 (не считаем сегодня)
+ * День 12 (новый сегодня): проверяем день 11 финализирован и не выполнен → streak = 0
  */
 async function calculateCurrentStreak(userId) {
   try {
@@ -212,8 +222,17 @@ async function calculateCurrentStreak(userId) {
         console.log(`      ✅ Streak continues! Count: ${streak}`);
         expectedDate.setDate(expectedDate.getDate() - 1);
       } else {
-        console.log('      ❌ Day not completed, breaking streak');
-        break;
+        // 🔧 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
+        // Если это сегодняшний день (не финализирован) и не выполнен - пропускаем его
+        if (!day.is_finalized) {
+          console.log('      ⏭️  Today not completed yet, skipping to yesterday');
+          expectedDate.setDate(expectedDate.getDate() - 1);
+          continue;  // ✅ Продолжаем проверять со вчерашнего дня
+        } else {
+          // ❌ Финализированный день не выполнен - streak прерывается
+          console.log('      ❌ Finalized day not completed, breaking streak');
+          break;
+        }
       }
     }
     
@@ -227,8 +246,19 @@ async function calculateCurrentStreak(userId) {
 }
 
 /**
- * ✅ ОБНОВЛЕНО: Подсчет самого длинного streak с учетом Freeze
+ * ✅ ИСПРАВЛЕНО: Подсчет самого длинного streak с учетом Freeze
+ * 
+ * ЛОГИКА:
+ * - Считает максимальный streak среди финализированных дней
+ * - Сравнивает с текущим streak (может включать сегодня)
+ * - Возвращает максимум из двух значений
+ * - Гарантирует: longest_streak >= current_streak
  * - День считается выполненным если is_streak_completed ИЛИ is_freeze_used
+ * 
+ * ПРИМЕРЫ:
+ * Финализированные дни: streak = 15
+ * Текущий streak: 20 (включая сегодня)
+ * → longest_streak = 20 ✅
  */
 async function calculateLongestStreak(userId) {
   try {
@@ -291,9 +321,19 @@ async function calculateLongestStreak(userId) {
     }
     
     maxStreak = Math.max(maxStreak, currentStreak);
-    console.log(`\n   🏆 LONGEST STREAK: ${maxStreak}`);
+    console.log(`   🏆 Max streak from finalized days: ${maxStreak}`);
+    
+    // 🔧 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
+    // Сравниваем с текущим streak (может включать сегодня)
+    const activeStreak = await calculateCurrentStreak(userId);
+    console.log(`   🔥 Current active streak: ${activeStreak}`);
+    
+    const finalLongestStreak = Math.max(maxStreak, activeStreak);
+    console.log(`\n   🏆 FINAL LONGEST STREAK: ${finalLongestStreak}`);
     console.log('🔍 === calculateLongestStreak END ===\n');
-    return maxStreak;
+    
+    return finalLongestStreak;
+    
   } catch (error) {
     console.error('❌ Ошибка при подсчете longest_streak:', error);
     return 0;
