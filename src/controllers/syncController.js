@@ -535,7 +535,7 @@ async function updateGoalLevel(userId, goalLevel) {
 }
 
 /**
- * 🔄 ОБНОВЛЕНО: Расчет прогресса с новой таблицей уровней
+ * 🔄 ОБНОВЛЕНО: Расчет прогресса с новой таблицей уровней + FIX для current_level
  */
 async function getFinalProgress(userId) {
   const result = await db.query(
@@ -562,7 +562,7 @@ async function getFinalProgress(userId) {
   const user = result.rows[0];
   const totalXP = parseFloat(user.total_xp);
   
-  // 🔄 ОБНОВИЛИ: используем LEVEL_XP_REQUIREMENTS вместо формулы
+  // 🔄 Вычисляем правильный уровень на основе total_xp
   let level = 1;
   
   for (let i = 10; i >= 1; i--) {
@@ -570,6 +570,15 @@ async function getFinalProgress(userId) {
       level = i;
       break;
     }
+  }
+
+  // ✅ FIX: Обновляем current_level в БД если изменился
+  if (level !== user.current_level) {
+    await db.query(
+      'UPDATE user_progress SET current_level = $1 WHERE user_id = $2',
+      [level, userId]
+    );
+    console.log(`📊 Level updated in DB: ${user.current_level} → ${level}`);
   }
 
   const currentXP = parseFloat((totalXP - LEVEL_XP_REQUIREMENTS[level]).toFixed(1));
