@@ -207,11 +207,11 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
   const isGoalCompleted = steps >= stepsGoal;
   const isStreakCompleted = steps >= (stepsGoal * 0.5);
 
-  // 🔒 Credits и бонусы только для подписчиков
+  // ✅ ИСПРАВЛЕНО: Credits для всех, бонусы только для подписчиков
   let creditsEarned = 0;
-  let canEarnBonus = hasSubscription;
+  let canEarnBonus = hasSubscription;  // 🔒 Бонусы только для подписчиков
   
-  if (isGoalCompleted && canEarnBonus) {
+  if (isGoalCompleted) {  // ✅ Credits для ВСЕХ (если цель выполнена)
     creditsEarned = (currentLevel * 10) + ((goal_level - 1) * 2);
     console.log(`💰 Credits calculated: level=${currentLevel}, goal_level=${goal_level} → ${creditsEarned} credits`);
   }
@@ -293,7 +293,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
         console.log(`💰 Credits начислены за ${date}: ${creditsEarned} credits`);
       }
     } else if (isGoalCompleted && !canEarnBonus) {
-      console.log(`🔒 День ${date}: цель выполнена, но бонус и credits недоступны (нет подписки)`);
+      console.log(`✅ День ${date}: цель выполнена, credits начислены (${creditsEarned}), бонус недоступен (нет подписки)`);
     } else {
       console.log(`ℹ️ День ${date}: цель не выполнена, бонус и credits не начислены`);
     }
@@ -386,7 +386,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
         console.log(`💰 Credits начислены за ${date}: ${creditsEarned} credits`);
       }
     } else if (isGoalCompleted && !canEarnBonus) {
-      console.log(`🔒 День ${date}: цель выполнена, но бонус и credits недоступны (нет подписки)`);
+      console.log(`✅ День ${date}: цель выполнена, credits начислены (${creditsEarned}), бонус недоступен (нет подписки)`);
     } else {
       console.log(`ℹ️ День ${date}: цель не выполнена, бонус и credits не начислены`);
     }
