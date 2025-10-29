@@ -5,7 +5,8 @@ require('dotenv').config();
 const syncRoutes = require('./routes/sync');
 const versionRoutes = require('./routes/version');
 const achievementsRoutes = require('./routes/achievements');
-const charactersRoutes = require('./routes/characters'); // ✅ ДОБАВИЛИ
+const charactersRoutes = require('./routes/characters');
+const goalsRoutes = require('./routes/goals');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +24,7 @@ app.get('/', (req, res) => {
       'POST /api/sync',
       'GET /api/version/check', 
       'GET /api/achievements',
-      'GET /api/characters'  // ✅ ДОБАВИЛИ
+      'GET /api/characters'
     ]
   });
 });
@@ -36,7 +37,8 @@ app.get('/health', (req, res) => {
 app.use('/api', syncRoutes);
 app.use('/api/version', versionRoutes);
 app.use('/api/achievements', achievementsRoutes);
-app.use('/api/characters', charactersRoutes); // ✅ ДОБАВИЛИ
+app.use('/api/characters', charactersRoutes);
+app.use('/api/goals', goalsRoutes);
 
 // Запуск сервера
 app.listen(PORT, () => {
