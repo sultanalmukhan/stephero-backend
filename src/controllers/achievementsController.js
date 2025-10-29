@@ -1,13 +1,90 @@
 const db = require('../db');
 const { calculateLongestStreak } = require('../helpers/dailySteps');
 
-// Вспомогательная функция: получить лучший день пользователя
+// Вспомогательная функция: форматирование даты в dd.mm.yyyy
+function formatDate(date) {
+  if (!date) return null;
+  
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  
+  return `${day}.${month}.${year}`;
+}
+
+// Вспомогательная функция: получить лучший день пользователя (с датой)
 async function getBestDaySteps(userId) {
   const result = await db.query(
-    'SELECT MAX(steps) as best_day FROM daily_steps WHERE user_id = $1',
+    `SELECT steps, date 
+     FROM daily_steps 
+     WHERE user_id = $1 
+     ORDER BY steps DESC 
+     LIMIT 1`,
     [userId]
   );
-  return result.rows[0]?.best_day || 0;
+  
+  if (result.rows.length === 0) {
+    return { steps: 0, date: null };
+  }
+  
+  return {
+    steps: parseInt(result.rows[0].steps) || 0,
+    date: result.rows[0].date
+  };
+}
+
+// Вспомогательная функция: получить даты самого длинного стрика
+async function getLongestStreakDates(userId) {
+  // Получаем все дни пользователя, отсортированные по дате
+  const result = await db.query(
+    `SELECT date, is_streak_completed, is_freeze_used
+     FROM daily_steps
+     WHERE user_id = $1
+     ORDER BY date ASC`,
+    [userId]
+  );
+
+  if (result.rows.length === 0) {
+    return { startDate: null, endDate: null };
+  }
+
+  const days = result.rows;
+  let longestStreak = 0;
+  let longestStreakStart = null;
+  let longestStreakEnd = null;
+  
+  let currentStreak = 0;
+  let currentStreakStart = null;
+
+  for (let i = 0; i < days.length; i++) {
+    const day = days[i];
+    const isStreakDay = day.is_streak_completed || day.is_freeze_used;
+
+    if (isStreakDay) {
+      // Продолжаем или начинаем новый стрик
+      if (currentStreak === 0) {
+        currentStreakStart = day.date;
+      }
+      currentStreak++;
+
+      // Проверяем, является ли это новым рекордом
+      if (currentStreak > longestStreak) {
+        longestStreak = currentStreak;
+        longestStreakStart = currentStreakStart;
+        longestStreakEnd = day.date;
+      }
+    } else {
+      // Стрик прерван
+      currentStreak = 0;
+      currentStreakStart = null;
+    }
+  }
+
+  return {
+    startDate: longestStreakStart,
+    endDate: longestStreakEnd
+  };
 }
 
 // Вспомогательная функция: проверка выполнения достижения
@@ -108,7 +185,17 @@ async function getAchievements(req, res) {
 
     const totalSteps = parseInt(userProgressResult.rows[0].total_steps) || 0;
     const longestStreak = await calculateLongestStreak(user_id);
-    const bestDaySteps = await getBestDaySteps(user_id);
+    
+    // Получаем лучший день с датой
+    const bestDay = await getBestDaySteps(user_id);
+    const bestDaySteps = bestDay.steps;
+    const bestDayDate = formatDate(bestDay.date);
+    
+    // Получаем даты самого длинного стрика
+    const streakDates = await getLongestStreakDates(user_id);
+    const longestStreakDates = (streakDates.startDate && streakDates.endDate)
+      ? `${formatDate(streakDates.startDate)}-${formatDate(streakDates.endDate)}`
+      : null;
 
     const userStats = {
       totalSteps,
@@ -119,7 +206,8 @@ async function getAchievements(req, res) {
     console.log(`📊 Achievements для ${user_id}:`);
     console.log(`   Total steps: ${totalSteps}`);
     console.log(`   Longest streak: ${longestStreak}`);
-    console.log(`   Best day: ${bestDaySteps}`);
+    console.log(`   Best day: ${bestDaySteps} (${bestDayDate})`);
+    console.log(`   Longest streak dates: ${longestStreakDates}`);
 
     // 2. Получить все достижения из БД
     const achievementsResult = await db.query(
@@ -206,8 +294,10 @@ async function getAchievements(req, res) {
         total_unlocked: totalUnlocked,
         total_available: totalAvailable,
         completion_percentage: completionPercentage,
-        best_day_steps: userStats.bestDaySteps,      // ✅ ДОБАВИЛИ
-        longest_streak: userStats.longestStreak      // ✅ ДОБАВИЛИ
+        best_day_steps: bestDaySteps,
+        best_day_date: bestDayDate,                    // ✅ НОВОЕ
+        longest_streak: longestStreak,
+        longest_streak_dates: longestStreakDates       // ✅ НОВОЕ
       }
     });
 
