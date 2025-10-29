@@ -1,11 +1,6 @@
 const db = require('../db');
 
-const GOAL_CONFIG = {
-  1: { steps: 5000, bonus: 0.10 },
-  2: { steps: 7500, bonus: 0.20 },
-  3: { steps: 10000, bonus: 0.30 },
-  4: { steps: 12500, bonus: 0.40 }
-};
+const { GOAL_CONFIG } = require('../config/goals');
 
 /**
  * ✅ Helper для форматирования даты БЕЗ timezone проблем
