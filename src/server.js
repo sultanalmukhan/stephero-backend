@@ -1,12 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
 const syncRoutes = require('./routes/sync');
 const versionRoutes = require('./routes/version');
 const achievementsRoutes = require('./routes/achievements');
 const charactersRoutes = require('./routes/characters');
 const goalsRoutes = require('./routes/goals');
+const heroMessagesRoutes = require('./routes/heroMessages');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,7 +24,9 @@ app.get('/', (req, res) => {
       'POST /api/sync',
       'GET /api/version/check', 
       'GET /api/achievements',
-      'GET /api/characters'
+      'GET /api/characters',
+      'GET /api/goals',
+      'GET /api/hero/messages'
     ]
   });
 });
@@ -39,6 +41,7 @@ app.use('/api/version', versionRoutes);
 app.use('/api/achievements', achievementsRoutes);
 app.use('/api/characters', charactersRoutes);
 app.use('/api/goals', goalsRoutes);
+app.use('/api/hero', heroMessagesRoutes);
 
 // Запуск сервера
 app.listen(PORT, () => {
