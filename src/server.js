@@ -7,7 +7,6 @@ const versionRoutes = require('./routes/version');
 const achievementsRoutes = require('./routes/achievements');
 const charactersRoutes = require('./routes/characters');
 const goalsRoutes = require('./routes/goals');
-const heroMessagesRoutes = require('./routes/heroMessages');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,7 +39,6 @@ app.use('/api/version', versionRoutes);
 app.use('/api/achievements', achievementsRoutes);
 app.use('/api/characters', charactersRoutes);
 app.use('/api/goals', goalsRoutes);
-app.use('/api/hero', heroMessagesRoutes);
 
 // Запуск сервера
 app.listen(PORT, () => {
