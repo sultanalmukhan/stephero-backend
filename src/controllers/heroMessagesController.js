@@ -59,7 +59,7 @@ const getHeroMessages = async (req, res) => {
       messages: messages
     });
 
-    console.log(`✅ Hero messages sent: language=${language}, progress=${progressNum}%, stage=${currentStage}`);
+    console.log(`✅ Hero messages sent: language=${language}, progress=${progressNum}%, stage=${currentStage}`);  // ← ИСПРАВЛЕНО
 
   } catch (error) {
     console.error('❌ Error in getHeroMessages:', error);
