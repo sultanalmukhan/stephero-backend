@@ -8,8 +8,8 @@ const GOALS = [
     level: 1,
     title: "Beginner",
     description: "Start your journey with a comfortable daily goal",
-    steps: 5000,
-    distance_km: 4.0,
+    steps: 7000,
+    distance_km: 5.3,
     bonus_percent: 0,
     is_free: true,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761739960/goal_1_animation_hatwuj.mp4"
@@ -18,8 +18,8 @@ const GOALS = [
     level: 2,
     title: "Walker",
     description: "Challenge yourself with a moderate daily target",
-    steps: 7500,
-    distance_km: 6.0,
+    steps: 8500,
+    distance_km: 6.4,
     bonus_percent: 20,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740011/goal_2_animation_yixhkn.mp4"
@@ -29,7 +29,7 @@ const GOALS = [
     title: "Athlete",
     description: "Push your limits with the recommended daily goal",
     steps: 10000,
-    distance_km: 8.0,
+    distance_km: 7.5,
     bonus_percent: 40,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740013/goal_3_animation_jzmyok.mp4"
@@ -38,8 +38,8 @@ const GOALS = [
     level: 4,
     title: "Champion",
     description: "Master the ultimate daily challenge",
-    steps: 12500,
-    distance_km: 10.0,
+    steps: 12000,
+    distance_km: 9.0,
     bonus_percent: 60,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740013/goal_4_animation_zxrvob.mp4"
