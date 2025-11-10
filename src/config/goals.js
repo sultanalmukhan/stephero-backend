@@ -10,7 +10,7 @@ const GOALS = [
     description: "Start your journey with a comfortable daily goal",
     steps: 5000,
     distance_km: 4.0,
-    bonus_percent: 10,
+    bonus_percent: 0,
     is_free: true,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761739960/goal_1_animation_hatwuj.mp4"
   },
@@ -30,7 +30,7 @@ const GOALS = [
     description: "Push your limits with the recommended daily goal",
     steps: 10000,
     distance_km: 8.0,
-    bonus_percent: 30,
+    bonus_percent: 40,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740013/goal_3_animation_jzmyok.mp4"
   },
@@ -40,7 +40,7 @@ const GOALS = [
     description: "Master the ultimate daily challenge",
     steps: 12500,
     distance_km: 10.0,
-    bonus_percent: 40,
+    bonus_percent: 60,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740013/goal_4_animation_zxrvob.mp4"
   }
