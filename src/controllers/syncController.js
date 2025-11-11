@@ -36,7 +36,7 @@ async function syncSteps(req, res) {
     await updateSubscriptionStatus(user_id, has_subscription);
 
     // 🧊 Обработать систему Freeze ПЕРЕД обработкой дней
-    const freezeResult = await processFreezeSystem(user_id);
+    const freezeResult = await processFreezeSystem(user_id, has_subscription);
 
     // Получить состояние ДО изменений
     const previousProgress = await getCurrentProgress(user_id);
@@ -97,19 +97,22 @@ async function syncSteps(req, res) {
     const todayGoalReached = today.steps >= todayGoal;
     const isStreakCompletedToday = today.steps >= (todayGoal * 0.5);
 
-    // 🧊 Вычислить дни до следующего Freeze
+    // 🧊 Вычислить дни до следующего Freeze (7 дней для всех)
     const userProgressResult = await db.query(
       'SELECT last_freeze_earned_at FROM user_progress WHERE user_id = $1',
       [user_id]
     );
     
-    let daysUntilNextFreeze = 14;
+    let daysUntilNextFreeze = 7;  // Изменено с 14 на 7
     if (userProgressResult.rows.length > 0 && userProgressResult.rows[0].last_freeze_earned_at) {
       const lastEarned = new Date(userProgressResult.rows[0].last_freeze_earned_at);
       const now = new Date();
       const daysSince = Math.floor((now - lastEarned) / (1000 * 60 * 60 * 24));
-      daysUntilNextFreeze = Math.max(0, 14 - (daysSince % 14));
+      daysUntilNextFreeze = Math.max(0, 7 - (daysSince % 7));  // Изменено с 14 на 7
     }
+
+    // 🔒 Динамический max freeze count
+    const maxFreezeCount = has_subscription ? 4 : 2;
 
     res.json({
       ...result,
@@ -136,7 +139,7 @@ async function syncSteps(req, res) {
       // 🧊 Freeze status
       freeze_status: {
         current_freeze_count: freezeResult.freezeCount,
-        max_freeze_count: 4,
+        max_freeze_count: maxFreezeCount,  // Динамический (2 или 4)
         days_until_next_freeze: daysUntilNextFreeze,
         freezes_earned_this_sync: freezeResult.freezesEarned,
         freezes_used_this_sync: freezeResult.freezesUsed,
