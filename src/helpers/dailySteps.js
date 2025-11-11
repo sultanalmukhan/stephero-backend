@@ -336,15 +336,24 @@ async function calculateLongestStreak(userId) {
 }
 
 /**
- * 🧊 Обработка системы Freeze для пользователя
- * - Вычисляет периоды начисления (каждые 14 дней)
+ * 🧊 ОБНОВЛЕНО: Обработка системы Freeze для пользователя
+ * - Free users: каждые 7 дней → +1 Freeze (максимум 2)
+ * - Premium users: каждые 7 дней → +2 Freeze (максимум 4)
  * - Автоматически использует Freeze на провальные дни
  * - Обновляет freeze_count и last_freeze_earned_at
  */
-async function processFreezeSystem(userId) {
+async function processFreezeSystem(userId, hasSubscription = false) {
   try {
     console.log('\n🧊 === processFreezeSystem START ===');
     console.log('   User ID:', userId);
+    console.log('   Subscription:', hasSubscription ? '✅ Premium' : '❌ Free');
+
+    // 🔒 Параметры в зависимости от подписки
+    const FREEZE_PERIOD_DAYS = 7;  // Каждые 7 дней для всех
+    const FREEZE_PER_PERIOD = hasSubscription ? 2 : 1;  // Premium: 2, Free: 1
+    const MAX_FREEZE_COUNT = hasSubscription ? 4 : 2;  // Premium: 4, Free: 2
+
+    console.log(`   📊 Settings: ${FREEZE_PER_PERIOD} freeze(s) every ${FREEZE_PERIOD_DAYS} days, max ${MAX_FREEZE_COUNT}`);
 
     // 1. Получить текущее состояние Freeze
     const userResult = await db.query(
@@ -381,7 +390,7 @@ async function processFreezeSystem(userId) {
     const now = new Date();
     const lastEarned = new Date(lastFreezeEarnedAt);
     const daysSince = Math.floor((now - lastEarned) / (1000 * 60 * 60 * 24));
-    const periods = Math.floor(daysSince / 14);
+    const periods = Math.floor(daysSince / FREEZE_PERIOD_DAYS);
 
     console.log('   Days since last earned:', daysSince);
     console.log('   Periods to process:', periods);
@@ -421,16 +430,17 @@ async function processFreezeSystem(userId) {
     for (const day of days) {
       const dayDate = new Date(day.date);
       const daysSinceStart = Math.floor((dayDate - lastEarned) / (1000 * 60 * 60 * 24));
-      const periodForThisDay = Math.floor(daysSinceStart / 14);
+      const periodForThisDay = Math.floor(daysSinceStart / FREEZE_PERIOD_DAYS);
 
       // Проверить не пора ли начислить Freeze
       if (periodForThisDay > periodsProcessed && periodsProcessed < periods) {
-        if (tempFreezeCount < 4) {
-          tempFreezeCount++;
-          freezesEarned++;
-          console.log(`   🎁 Freeze earned on period ${periodForThisDay + 1} (count: ${tempFreezeCount})`);
+        const freezesToAdd = Math.min(FREEZE_PER_PERIOD, MAX_FREEZE_COUNT - tempFreezeCount);
+        if (freezesToAdd > 0) {
+          tempFreezeCount += freezesToAdd;
+          freezesEarned += freezesToAdd;
+          console.log(`   🎁 ${freezesToAdd} Freeze(s) earned on period ${periodForThisDay + 1} (count: ${tempFreezeCount})`);
         } else {
-          console.log(`   ⚠️  Freeze limit reached (4), cannot earn more`);
+          console.log(`   ⚠️  Freeze limit reached (${MAX_FREEZE_COUNT}), cannot earn more`);
         }
         periodsProcessed = periodForThisDay;
       }
@@ -455,7 +465,7 @@ async function processFreezeSystem(userId) {
 
     // 6. Обновить last_freeze_earned_at и freeze_count
     const newLastFreezeEarnedAt = new Date(lastEarned);
-    newLastFreezeEarnedAt.setDate(newLastFreezeEarnedAt.getDate() + (periods * 14));
+    newLastFreezeEarnedAt.setDate(newLastFreezeEarnedAt.getDate() + (periods * FREEZE_PERIOD_DAYS));
 
     await db.query(
       `UPDATE user_progress 
