@@ -2,6 +2,9 @@ const db = require('../db');
 
 const { GOAL_CONFIG } = require('../config/goals');
 
+// 🔥 Константа для стрика - статичное число шагов
+const STREAK_THRESHOLD = 7000;
+
 /**
  * ✅ Helper для форматирования даты БЕЗ timezone проблем
  */
@@ -133,9 +136,10 @@ async function updateDailyStep(userId, date, updates) {
  * - Если сегодняшний день (не финализирован) выполнен → включаем его в streak
  * - Streak сбрасывается только когда финализированный день не выполнен (и нет freeze)
  * - День считается выполненным если is_streak_completed ИЛИ is_freeze_used
+ * - Для стрика нужно ≥7000 шагов (STREAK_THRESHOLD)
  * 
  * ПРИМЕРЫ:
- * День 1-10: выполнены → streak = 10
+ * День 1-10: выполнены (≥7000 шагов) → streak = 10
  * День 11 (сегодня): 1000/5000 шагов → показываем streak = 10 (не считаем сегодня)
  * День 12 (новый сегодня): проверяем день 11 финализирован и не выполнен → streak = 0
  */
@@ -207,7 +211,7 @@ async function calculateCurrentStreak(userId) {
         const reason = day.is_freeze_used ? 'freeze used' : 'from flag';
         console.log(`      Finalized: ${isStreakValid ? '✅' : '❌'} (${reason})`);
       } else {
-        const threshold = day.steps_goal * 0.5;
+        const threshold = STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
         isStreakValid = day.steps >= threshold;
         console.log(`      Today: ${day.steps} >= ${threshold}? ${isStreakValid ? '✅' : '❌'}`);
       }
@@ -502,5 +506,6 @@ module.exports = {
   calculateCurrentStreak,
   calculateLongestStreak,
   processFreezeSystem,
-  GOAL_CONFIG
+  GOAL_CONFIG,
+  STREAK_THRESHOLD
 };
