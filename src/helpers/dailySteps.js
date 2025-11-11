@@ -377,17 +377,35 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     console.log('   Current freeze_count:', freezeCount);
     console.log('   Last freeze earned at:', lastFreezeEarnedAt);
 
-    // 2. Если первый sync - инициализировать
+    // 2. Если первый sync - инициализировать на дату первого завершенного дня
     if (!lastFreezeEarnedAt) {
       console.log('   ⚙️  First sync - initializing freeze system');
-      const now = new Date();
+      
+      // Найти самый ранний завершенный день
+      const firstDayResult = await db.query(
+        'SELECT MIN(date) as first_date FROM daily_steps WHERE user_id = $1 AND is_finalized = true',
+        [userId]
+      );
+      
+      let initDate;
+      if (firstDayResult.rows.length > 0 && firstDayResult.rows[0].first_date) {
+        initDate = new Date(firstDayResult.rows[0].first_date);
+        console.log('   📅 Using first completed day:', formatDateLocal(initDate));
+      } else {
+        // Если нет завершенных дней, используем 30 дней назад
+        initDate = new Date();
+        initDate.setDate(initDate.getDate() - 30);
+        console.log('   📅 No completed days found, using 30 days ago:', formatDateLocal(initDate));
+      }
+      
       await db.query(
         'UPDATE user_progress SET last_freeze_earned_at = $1 WHERE user_id = $2',
-        [now, userId]
+        [initDate, userId]
       );
-      console.log('   ✅ Freeze system initialized');
-      console.log('🧊 === processFreezeSystem END ===\n');
-      return { freezeCount: 0, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
+      
+      // ✅ НЕ возвращаемся сразу - продолжаем обработку!
+      lastFreezeEarnedAt = initDate;
+      console.log('   ✅ Freeze system initialized, continuing processing...');
     }
 
     // 3. Вычислить сколько периодов прошло
