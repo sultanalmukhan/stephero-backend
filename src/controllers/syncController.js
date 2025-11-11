@@ -6,7 +6,8 @@ const {
   calculateCurrentStreak, 
   calculateLongestStreak,
   processFreezeSystem,
-  GOAL_CONFIG 
+  GOAL_CONFIG,
+  STREAK_THRESHOLD  // 🔥 Импортируем константу стрика
 } = require('../helpers/dailySteps');
 
 // 🔒 Level cap убран - все пользователи могут прогрессировать без ограничений
@@ -95,7 +96,7 @@ async function syncSteps(req, res) {
     const todayGoal = GOAL_CONFIG[today.goal_level].steps;
     const todayPercentage = Math.floor((today.steps / todayGoal) * 100);
     const todayGoalReached = today.steps >= todayGoal;
-    const isStreakCompletedToday = today.steps >= (todayGoal * 0.5);
+    const isStreakCompletedToday = today.steps >= STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
 
     // 🧊 Вычислить дни до следующего Freeze (7 дней для всех)
     const userProgressResult = await db.query(
@@ -186,7 +187,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
   const bonusPercent = GOAL_CONFIG[goal_level].bonus;
   const isGoalCompleted = steps >= stepsGoal;
-  const isStreakCompleted = steps >= (stepsGoal * 0.5);
+  const isStreakCompleted = steps >= STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
 
   // ✅ Credits для всех, бонусы только для подписчиков
   let creditsEarned = 0;
@@ -319,7 +320,7 @@ async function processTodayDay(userId, day) {
 
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
   const isGoalCompleted = steps >= stepsGoal;
-  const isStreakCompleted = steps >= (stepsGoal * 0.5);
+  const isStreakCompleted = steps >= STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
 
   const existingDay = await db.query(
     'SELECT steps FROM daily_steps WHERE user_id = $1 AND date = $2',
