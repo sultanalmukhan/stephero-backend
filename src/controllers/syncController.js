@@ -36,9 +36,6 @@ async function syncSteps(req, res) {
     // 🔒 Обновить статус подписки в БД
     await updateSubscriptionStatus(user_id, has_subscription);
 
-    // 🧊 Обработать систему Freeze ПЕРЕД обработкой дней
-    const freezeResult = await processFreezeSystem(user_id, has_subscription);
-
     // Получить состояние ДО изменений
     const previousProgress = await getCurrentProgress(user_id);
     const previousXP = previousProgress.current_xp;
@@ -84,6 +81,10 @@ async function syncSteps(req, res) {
         });
       }
     }
+
+    // 🔧 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ:
+    // 🧊 Обработать систему Freeze ПОСЛЕ финализации всех дней
+    const freezeResult = await processFreezeSystem(user_id, has_subscription);
 
     // 2. Обработка сегодняшнего дня
     const todayResult = await processTodayDay(user_id, today);
