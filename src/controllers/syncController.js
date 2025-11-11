@@ -190,8 +190,8 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
   let canEarnBonus = hasSubscription;  // 🔒 Бонусы только для подписчиков
   
   if (isGoalCompleted) {  // ✅ Credits для ВСЕХ (если цель выполнена)
-    creditsEarned = (currentLevel * 10) + ((goal_level - 1) * 2);
-    console.log(`💰 Credits calculated: level=${currentLevel}, goal_level=${goal_level} → ${creditsEarned} credits`);
+    creditsEarned = goal_level * 10;  // Простая формула: goal_level 1=10, 2=20, 3=30, 4=40
+    console.log(`💰 Credits calculated: goal_level=${goal_level} → ${creditsEarned} credits`);
   }
 
   const existingDay = await db.query(
