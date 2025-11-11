@@ -9,12 +9,8 @@ const {
   GOAL_CONFIG 
 } = require('../helpers/dailySteps');
 
-// 🔒 Константы для subscription cap
-const FREE_TIER_MAX_LEVEL = 3;
-
-const FREE_TIER_MAX_XP = LEVEL_XP_REQUIREMENTS[4] - 0.1; // 37199.9 XP
-
-console.log(`🔒 Free tier cap: Level ${FREE_TIER_MAX_LEVEL}, Max XP: ${FREE_TIER_MAX_XP}`);
+// 🔒 Level cap убран - все пользователи могут прогрессировать без ограничений
+// Бонусы остаются только для premium (has_subscription = true)
 
 async function syncSteps(req, res) {
   try {
@@ -22,7 +18,7 @@ async function syncSteps(req, res) {
       user_id, 
       current_goal_level,
       completed_days,
-      has_subscription = false  // 🔒 ДОБАВИЛИ: по умолчанию false
+      has_subscription = false  // 🔒 Бонусы только для premium
     } = req.body;
 
     // Валидация
@@ -62,24 +58,20 @@ async function syncSteps(req, res) {
     let totalXPGained = 0;
     let bonusXPEarned = 0;
     let totalCreditsEarned = 0;
-    let totalXPLost = 0;  // 🔒 ДОБАВИЛИ: трекинг потерянного XP
     const bonusDetails = [];
 
     // 1. Обработка завершенных дней (все кроме последнего)
     for (const day of previousDays) {
-      // 🔒 ОБНОВИЛИ: передаем has_subscription и previousProgress
       const result = await processPreviousDay(
         user_id, 
         day, 
         previousProgress.current_level,
-        has_subscription,
-        previousProgress  // для проверки текущего XP
+        has_subscription
       );
       
       totalXPGained += result.xpGained;
       bonusXPEarned += result.bonusXP;
       totalCreditsEarned += result.creditsEarned;
-      totalXPLost += result.xpLost;  // 🔒 ДОБАВИЛИ
       
       if (result.bonusXP > 0 || !result.goalReached) {
         bonusDetails.push({
@@ -93,16 +85,8 @@ async function syncSteps(req, res) {
     }
 
     // 2. Обработка сегодняшнего дня
-    // 🔒 ОБНОВИЛИ: передаем has_subscription и актуальный прогресс
-    const currentProgressAfterPrevious = await getCurrentProgress(user_id);
-    const todayResult = await processTodayDay(
-      user_id, 
-      today, 
-      has_subscription, 
-      currentProgressAfterPrevious
-    );
+    const todayResult = await processTodayDay(user_id, today);
     totalXPGained += todayResult.xpGained;
-    totalXPLost += todayResult.xpLost;  // 🔒 ДОБАВИЛИ
 
     // 3. Финальный результат
     const result = await getFinalProgress(user_id);
@@ -126,9 +110,6 @@ async function syncSteps(req, res) {
       const daysSince = Math.floor((now - lastEarned) / (1000 * 60 * 60 * 24));
       daysUntilNextFreeze = Math.max(0, 14 - (daysSince % 14));
     }
-
-    // 🔒 Проверка на level cap
-    const isLevelCapped = !has_subscription && result.current_level >= FREE_TIER_MAX_LEVEL;
 
     res.json({
       ...result,
@@ -162,12 +143,9 @@ async function syncSteps(req, res) {
         freeze_used_on_dates: freezeResult.freezeUsedDays
       },
 
-      // 🔒 ДОБАВИЛИ: Subscription status
+      // 🔒 Subscription status (без level cap)
       subscription_status: {
-        has_subscription: has_subscription,
-        is_level_capped: isLevelCapped,
-        max_free_level: FREE_TIER_MAX_LEVEL,
-        xp_lost_this_sync: parseFloat(totalXPLost.toFixed(1))
+        has_subscription: has_subscription
       }
     });
 
@@ -181,7 +159,7 @@ async function syncSteps(req, res) {
 }
 
 /**
- * 🔒 НОВАЯ ФУНКЦИЯ: Обновление статуса подписки
+ * 🔒 Обновление статуса подписки
  */
 async function updateSubscriptionStatus(userId, hasSubscription) {
   await db.query(
@@ -192,14 +170,14 @@ async function updateSubscriptionStatus(userId, hasSubscription) {
 }
 
 /**
- * 🔒 ОБНОВЛЕНО: Обработка завершенного дня с учетом subscription cap
+ * 🔒 Обработка завершенного дня (бонусы только для premium)
  */
-async function processPreviousDay(userId, day, currentLevel, hasSubscription, currentProgress) {
+async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
   const { date, steps, goal_level } = day;
   
   if (!GOAL_CONFIG[goal_level]) {
     console.warn(`Неверный goal_level: ${goal_level} для дня ${date}`);
-    return { xpGained: 0, bonusXP: 0, creditsEarned: 0, xpLost: 0, goalReached: false, stepsGoal: 0 };
+    return { xpGained: 0, bonusXP: 0, creditsEarned: 0, goalReached: false, stepsGoal: 0 };
   }
 
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
@@ -207,7 +185,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
   const isGoalCompleted = steps >= stepsGoal;
   const isStreakCompleted = steps >= (stepsGoal * 0.5);
 
-  // ✅ ИСПРАВЛЕНО: Credits для всех, бонусы только для подписчиков
+  // ✅ Credits для всех, бонусы только для подписчиков
   let creditsEarned = 0;
   let canEarnBonus = hasSubscription;  // 🔒 Бонусы только для подписчиков
   
@@ -223,71 +201,29 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
 
   let xpGained = 0;
   let bonusXP = 0;
-  let xpLost = 0;  // 🔒 ДОБАВИЛИ
 
   if (existingDay.rows.length === 0) {
     // День НЕ существует в БД → новый день
     console.log(`📅 Новый завершенный день: ${date}`);
     
-    let xpAmount = steps * 0.1;
+    const xpAmount = steps * 0.1;
 
-    // 🔒 Проверка cap для free users
-    if (!hasSubscription) {
-      const currentTotalXP = parseFloat(currentProgress.total_xp) || 0;
-      const accumulated = getAccumulatedXP(currentProgress.current_level);
-      const actualTotalXP = accumulated + currentTotalXP;
-
-      if (actualTotalXP >= FREE_TIER_MAX_XP) {
-        // Уже на лимите - весь XP теряется
-        xpLost = xpAmount;
-        xpAmount = 0;
-        console.log(`🔒 Level cap reached: ${xpLost} XP lost`);
-      } else if (actualTotalXP + xpAmount > FREE_TIER_MAX_XP) {
-        // Частично можно начислить
-        const allowedXP = FREE_TIER_MAX_XP - actualTotalXP;
-        xpLost = xpAmount - allowedXP;
-        xpAmount = allowedXP;
-        console.log(`🔒 Partial XP cap: earned ${xpAmount}, lost ${xpLost}`);
-      }
-    }
-
-    if (xpAmount > 0) {
-      await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
-        [xpAmount, steps, creditsEarned, userId]
-      );
-      xpGained = xpAmount;
-    }
+    // Начисляем базовый XP всем пользователям без ограничений
+    await db.query(
+      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
+      [xpAmount, steps, creditsEarned, userId]
+    );
+    xpGained = xpAmount;
 
     // 🔒 Бонус только для подписчиков
     if (isGoalCompleted && canEarnBonus) {
       bonusXP = parseFloat((steps * bonusPercent * 0.1).toFixed(1));
       
-      // Бонус тоже проверяем на cap
-      let bonusToApply = bonusXP;
-      if (!hasSubscription) {
-        const currentTotalXP = parseFloat(currentProgress.total_xp) || 0;
-        const accumulated = getAccumulatedXP(currentProgress.current_level);
-        const actualTotalXP = accumulated + currentTotalXP + xpGained;
-
-        if (actualTotalXP >= FREE_TIER_MAX_XP) {
-          xpLost += bonusXP;
-          bonusToApply = 0;
-        } else if (actualTotalXP + bonusXP > FREE_TIER_MAX_XP) {
-          const allowedBonus = FREE_TIER_MAX_XP - actualTotalXP;
-          xpLost += (bonusXP - allowedBonus);
-          bonusToApply = allowedBonus;
-        }
-      }
-
-      if (bonusToApply > 0) {
-        await db.query(
-          'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
-          [bonusToApply, userId]
-        );
-        bonusXP = bonusToApply;
-        console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
-      }
+      await db.query(
+        'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
+        [bonusXP, userId]
+      );
+      console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
       
       if (creditsEarned > 0) {
         console.log(`💰 Credits начислены за ${date}: ${creditsEarned} credits`);
@@ -315,7 +251,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
 
     if (isFinalized) {
       console.log(`ℹ️ День ${date} уже был обработан ранее (дубликат)`);
-      return { xpGained: 0, bonusXP: 0, creditsEarned: 0, xpLost: 0, goalReached: isGoalCompleted, stepsGoal };
+      return { xpGained: 0, bonusXP: 0, creditsEarned: 0, goalReached: isGoalCompleted, stepsGoal };
     }
 
     console.log(`📅 Финализация дня: ${date} (было ${oldSteps} шагов, стало ${steps} шагов)`);
@@ -323,32 +259,15 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
     const difference = steps - oldSteps;
     
     if (difference > 0) {
-      let xpAmount = difference * 0.1;
+      const xpAmount = difference * 0.1;
 
-      // 🔒 Проверка cap
-      if (!hasSubscription) {
-        const currentTotalXP = parseFloat(currentProgress.total_xp) || 0;
-        const accumulated = getAccumulatedXP(currentProgress.current_level);
-        const actualTotalXP = accumulated + currentTotalXP;
-
-        if (actualTotalXP >= FREE_TIER_MAX_XP) {
-          xpLost = xpAmount;
-          xpAmount = 0;
-        } else if (actualTotalXP + xpAmount > FREE_TIER_MAX_XP) {
-          const allowedXP = FREE_TIER_MAX_XP - actualTotalXP;
-          xpLost = xpAmount - allowedXP;
-          xpAmount = allowedXP;
-        }
-      }
-
-      if (xpAmount > 0) {
-        await db.query(
-          'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
-          [xpAmount, difference, creditsEarned, userId]
-        );
-        xpGained = xpAmount;
-        console.log(`✅ Начислен XP за разницу: ${xpAmount} (${difference} шагов)`);
-      }
+      // Начисляем базовый XP всем пользователям без ограничений
+      await db.query(
+        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
+        [xpAmount, difference, creditsEarned, userId]
+      );
+      xpGained = xpAmount;
+      console.log(`✅ Начислен XP за разницу: ${xpAmount} (${difference} шагов)`);
     } else if (difference < 0) {
       console.warn(`⚠️ Шаги уменьшились для ${date}: ${oldSteps} → ${steps}`);
     }
@@ -357,30 +276,11 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
     if (isGoalCompleted && canEarnBonus) {
       bonusXP = parseFloat((steps * bonusPercent * 0.1).toFixed(1));
       
-      let bonusToApply = bonusXP;
-      if (!hasSubscription) {
-        const currentTotalXP = parseFloat(currentProgress.total_xp) || 0;
-        const accumulated = getAccumulatedXP(currentProgress.current_level);
-        const actualTotalXP = accumulated + currentTotalXP + xpGained;
-
-        if (actualTotalXP >= FREE_TIER_MAX_XP) {
-          xpLost += bonusXP;
-          bonusToApply = 0;
-        } else if (actualTotalXP + bonusXP > FREE_TIER_MAX_XP) {
-          const allowedBonus = FREE_TIER_MAX_XP - actualTotalXP;
-          xpLost += (bonusXP - allowedBonus);
-          bonusToApply = allowedBonus;
-        }
-      }
-
-      if (bonusToApply > 0) {
-        await db.query(
-          'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
-          [bonusToApply, userId]
-        );
-        bonusXP = bonusToApply;
-        console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
-      }
+      await db.query(
+        'UPDATE user_progress SET total_xp = total_xp + $1 WHERE user_id = $2',
+        [bonusXP, userId]
+      );
+      console.log(`✅ Бонус начислен за ${date}: ${bonusXP} XP`);
       
       if (creditsEarned > 0) {
         console.log(`💰 Credits начислены за ${date}: ${creditsEarned} credits`);
@@ -400,18 +300,18 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription, cu
     });
   }
 
-  return { xpGained, bonusXP, creditsEarned, xpLost, goalReached: isGoalCompleted, stepsGoal };
+  return { xpGained, bonusXP, creditsEarned, goalReached: isGoalCompleted, stepsGoal };
 }
 
 /**
- * 🔒 ОБНОВЛЕНО: Обработка сегодняшнего дня с учетом subscription cap
+ * Обработка сегодняшнего дня (без бонусов)
  */
-async function processTodayDay(userId, day, hasSubscription, currentProgress) {
+async function processTodayDay(userId, day) {
   const { date, steps, goal_level } = day;
   
   if (!GOAL_CONFIG[goal_level]) {
     console.warn(`Неверный goal_level: ${goal_level} для дня ${date}`);
-    return { xpGained: 0, xpLost: 0 };
+    return { xpGained: 0 };
   }
 
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
@@ -424,38 +324,18 @@ async function processTodayDay(userId, day, hasSubscription, currentProgress) {
   );
 
   let xpGained = 0;
-  let xpLost = 0;  // 🔒 ДОБАВИЛИ
 
   if (existingDay.rows.length === 0) {
     console.log(`📅 Первый заход сегодня: ${date}, шагов: ${steps}`);
     
-    let xpAmount = steps * 0.1;
+    const xpAmount = steps * 0.1;
 
-    // 🔒 Проверка cap
-    if (!hasSubscription) {
-      const currentTotalXP = parseFloat(currentProgress.total_xp) || 0;
-      const accumulated = getAccumulatedXP(currentProgress.current_level);
-      const actualTotalXP = accumulated + currentTotalXP;
-
-      if (actualTotalXP >= FREE_TIER_MAX_XP) {
-        xpLost = xpAmount;
-        xpAmount = 0;
-        console.log(`🔒 Level cap reached for today: ${xpLost} XP lost`);
-      } else if (actualTotalXP + xpAmount > FREE_TIER_MAX_XP) {
-        const allowedXP = FREE_TIER_MAX_XP - actualTotalXP;
-        xpLost = xpAmount - allowedXP;
-        xpAmount = allowedXP;
-        console.log(`🔒 Partial XP cap for today: earned ${xpAmount}, lost ${xpLost}`);
-      }
-    }
-
-    if (xpAmount > 0) {
-      await db.query(
-        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
-        [xpAmount, steps, userId]
-      );
-      xpGained = xpAmount;
-    }
+    // Начисляем базовый XP всем пользователям без ограничений
+    await db.query(
+      'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
+      [xpAmount, steps, userId]
+    );
+    xpGained = xpAmount;
 
     await saveDailyStep(userId, {
       date,
@@ -472,37 +352,20 @@ async function processTodayDay(userId, day, hasSubscription, currentProgress) {
 
     if (difference < 0) {
       console.warn(`⚠️ Шаги уменьшились для ${date}: ${oldSteps} → ${steps}`);
-      return { xpGained: 0, xpLost: 0 };
+      return { xpGained: 0 };
     }
 
     console.log(`📅 Повторный заход сегодня: ${date}, было ${oldSteps}, стало ${steps}, разница ${difference}`);
 
     if (difference > 0) {
-      let xpAmount = difference * 0.1;
+      const xpAmount = difference * 0.1;
 
-      // 🔒 Проверка cap
-      if (!hasSubscription) {
-        const currentTotalXP = parseFloat(currentProgress.total_xp) || 0;
-        const accumulated = getAccumulatedXP(currentProgress.current_level);
-        const actualTotalXP = accumulated + currentTotalXP;
-
-        if (actualTotalXP >= FREE_TIER_MAX_XP) {
-          xpLost = xpAmount;
-          xpAmount = 0;
-        } else if (actualTotalXP + xpAmount > FREE_TIER_MAX_XP) {
-          const allowedXP = FREE_TIER_MAX_XP - actualTotalXP;
-          xpLost = xpAmount - allowedXP;
-          xpAmount = allowedXP;
-        }
-      }
-
-      if (xpAmount > 0) {
-        await db.query(
-          'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
-          [xpAmount, difference, userId]
-        );
-        xpGained = xpAmount;
-      }
+      // Начисляем базовый XP всем пользователям без ограничений
+      await db.query(
+        'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
+        [xpAmount, difference, userId]
+      );
+      xpGained = xpAmount;
     }
 
     await updateDailyStep(userId, date, {
@@ -513,14 +376,7 @@ async function processTodayDay(userId, day, hasSubscription, currentProgress) {
     });
   }
 
-  return { xpGained, xpLost };
-}
-
-/**
- * 🔒 ОБНОВЛЕНО: Вычислить accumulated XP для уровня
- */
-function getAccumulatedXP(level) {
-  return LEVEL_XP_REQUIREMENTS[level] || 0;
+  return { xpGained };
 }
 
 async function updateGoalLevel(userId, goalLevel) {
@@ -535,7 +391,7 @@ async function updateGoalLevel(userId, goalLevel) {
 }
 
 /**
- * 🔄 ОБНОВЛЕНО: Расчет прогресса с новой таблицей уровней + FIX для current_level
+ * 🔄 Расчет прогресса с новой таблицей уровней
  */
 async function getFinalProgress(userId) {
   const result = await db.query(
@@ -572,7 +428,7 @@ async function getFinalProgress(userId) {
     }
   }
 
-  // ✅ FIX: Обновляем current_level в БД если изменился
+  // ✅ Обновляем current_level в БД если изменился
   if (level !== user.current_level) {
     await db.query(
       'UPDATE user_progress SET current_level = $1 WHERE user_id = $2',
