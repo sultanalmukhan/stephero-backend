@@ -60,6 +60,20 @@ const CHARACTER_NAMES = {
   10: 'God Raccoon',
 };
 
+// 📝 Описания персонажей для каждого уровня
+const CHARACTER_DESCRIPTIONS = {
+  1: 'Just starting your fitness journey. Every step counts!',
+  2: 'You\'re getting the hang of it. Keep walking!',
+  3: 'Building momentum! You\'re becoming a regular walker.',
+  4: 'Speed is your ally now. Quick steps, quick progress!',
+  5: 'You\'ve reached new heights! Your dedication is inspiring.',
+  6: 'Super powers activated! You\'re unstoppable now.',
+  7: 'Mega achievements unlocked! You\'re a walking champion.',
+  8: 'Ultra performance! You\'re in the top tier of walkers.',
+  9: 'Legendary status achieved! Your consistency is remarkable.',
+  10: 'Ultimate mastery! You\'ve become a true fitness deity.',
+};
+
 // 📊 Требования XP для каждого уровня
 const LEVEL_XP_REQUIREMENTS = {
   1: 0,           // Старт
@@ -85,6 +99,7 @@ function getCharacterData(level) {
     image_url: CHARACTER_IMAGES[level] || CHARACTER_IMAGES[defaultLevel],
     animation_url: CHARACTER_ANIMATIONS[level] || CHARACTER_ANIMATIONS[defaultLevel],
     name: CHARACTER_NAMES[level] || CHARACTER_NAMES[defaultLevel],
+    description: CHARACTER_DESCRIPTIONS[level] || CHARACTER_DESCRIPTIONS[defaultLevel],
     level: level
   };
 }
@@ -111,6 +126,7 @@ function getCharactersList(userLevel, userTotalXP) {
     characters.push({
       level: level,
       name: CHARACTER_NAMES[level],
+      description: CHARACTER_DESCRIPTIONS[level],
       isClosed: isClosed,
       imageLink: isClosed ? LOCKED_CHARACTER_IMAGES[level] : CHARACTER_IMAGES[level],
       xpRequired: xpRequired,
@@ -127,6 +143,7 @@ module.exports = {
   CHARACTER_IMAGES,
   CHARACTER_ANIMATIONS,
   CHARACTER_NAMES,
+  CHARACTER_DESCRIPTIONS,
   LEVEL_XP_REQUIREMENTS,
   CLOUDINARY_CLOUD_NAME
 };
