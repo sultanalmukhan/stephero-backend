@@ -400,12 +400,12 @@ async function updateGoalLevel(userId, goalLevel) {
  */
 async function getFinalProgress(userId) {
   const result = await db.query(
-    'SELECT total_steps, total_xp, current_level, total_credits FROM user_progress WHERE user_id = $1',
+    'SELECT total_steps, total_xp, current_level, total_credits, goal_level FROM user_progress WHERE user_id = $1',
     [userId]
   );
 
   if (result.rows.length === 0) {
-    const characterData = getCharacterData(1);
+    const characterData = getCharacterData(1, 0);  // 👈 Передаем 0% прогресса
     return {
       total_steps: 0,
       current_xp: 0,
@@ -415,6 +415,7 @@ async function getFinalProgress(userId) {
       total_credits: 0,
       character_image_url: characterData.image_url,
       character_animation_url: characterData.animation_url,
+      character_mood: characterData.current_mood,  // 👈 Добавляем mood в ответ
       current_streak: 0,
       longest_streak: 0
     };
@@ -442,10 +443,24 @@ async function getFinalProgress(userId) {
     console.log(`📊 Level updated in DB: ${user.current_level} → ${level}`);
   }
 
+  // 🎯 Получаем сегодняшний прогресс для определения mood
+  const todayResult = await db.query(
+    'SELECT steps FROM daily_steps WHERE user_id = $1 AND date = CURRENT_DATE',
+    [userId]
+  );
+  
+  const todaySteps = todayResult.rows.length > 0 ? todayResult.rows[0].steps : 0;
+  const goalLevel = user.goal_level || 3;
+  const todayGoal = GOAL_CONFIG[goalLevel].steps;
+  const todayProgressPercent = Math.floor((todaySteps / todayGoal) * 100);
+  
+  console.log(`🎭 Today progress: ${todaySteps}/${todayGoal} = ${todayProgressPercent}%`);
+
   const currentXP = parseFloat((totalXP - LEVEL_XP_REQUIREMENTS[level]).toFixed(1));
   const xpToNext = level < 10 ? LEVEL_XP_REQUIREMENTS[level + 1] - LEVEL_XP_REQUIREMENTS[level] : 0;
 
-  const characterData = getCharacterData(level);
+  // 👈 Передаем процент прогресса в getCharacterData
+  const characterData = getCharacterData(level, todayProgressPercent);
 
   const currentStreak = await calculateCurrentStreak(userId);
   const longestStreak = await calculateLongestStreak(userId);
@@ -459,6 +474,7 @@ async function getFinalProgress(userId) {
     total_credits: parseInt(user.total_credits) || 0,
     character_image_url: characterData.image_url,
     character_animation_url: characterData.animation_url,
+    character_mood: characterData.current_mood,  // 👈 Добавляем mood в ответ
     current_streak: currentStreak,
     longest_streak: longestStreak
   };
