@@ -4,32 +4,18 @@ const CLOUDINARY_CLOUD_NAME = 'dvfelpkla';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 const CLOUDINARY_VIDEO_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload`;
 
-// URL картинок персонажей для каждого уровня
+// 🎨 URL картинок персонажей для каждого уровня (обновлено)
 const CHARACTER_IMAGES = {
-  1: `${CLOUDINARY_BASE}/home_1_ol52o7.png`,
-  2: `${CLOUDINARY_BASE}/home_2_r2zd4t.png`,
-  3: `${CLOUDINARY_BASE}/home_3_gwfzgv.png`,
-  4: `${CLOUDINARY_BASE}/home_4_mi1alr.png`,
-  5: `${CLOUDINARY_BASE}/home_5_cltq8l.png`,
-  6: `${CLOUDINARY_BASE}/home_6_pktwtb.png`,
-  7: `${CLOUDINARY_BASE}/home_7_lseqbj.png`,
-  8: `${CLOUDINARY_BASE}/home_8_xxrx4n.png`,
-  9: `${CLOUDINARY_BASE}/home_9_sub0yz.png`,
-  10: `${CLOUDINARY_BASE}/home_10_r3he8f.png`,
-};
-
-// 🔒 URL картинок для закрытых персонажей
-const LOCKED_CHARACTER_IMAGES = {
-  1: `${CLOUDINARY_BASE}/v1760952983/locked_1_b8x52q.png`,
-  2: `${CLOUDINARY_BASE}/v1760952983/locked_2_layji2.png`,
-  3: `${CLOUDINARY_BASE}/v1760952983/locked_3_trlx6t.png`,
-  4: `${CLOUDINARY_BASE}/v1760952983/locked_4_u5dg4p.png`,
-  5: `${CLOUDINARY_BASE}/v1760952984/locked_5_nxytmr.png`,
-  6: `${CLOUDINARY_BASE}/v1760952983/locked_6_ecdh4k.png`,
-  7: `${CLOUDINARY_BASE}/v1760952984/locked_7_x4vdww.png`,
-  8: `${CLOUDINARY_BASE}/v1760952984/locked_8_tkfkn8.png`,
-  9: `${CLOUDINARY_BASE}/v1760952985/locked_9_dwd42e.png`,
-  10: `${CLOUDINARY_BASE}/v1760952984/locked_10_ad8dby.png`,
+  1: `${CLOUDINARY_BASE}/v1764695128/level_1_vmln0o.png`,
+  2: `${CLOUDINARY_BASE}/v1764695128/level_2_fup8pn.png`,
+  3: `${CLOUDINARY_BASE}/v1764695128/level_3_zhu9ey.png`,
+  4: `${CLOUDINARY_BASE}/v1764695128/level_4_tncohf.png`,
+  5: `${CLOUDINARY_BASE}/v1764695128/level_5_ya5l7x.png`,
+  6: `${CLOUDINARY_BASE}/v1764695131/level_6_its02y.png`,
+  7: `${CLOUDINARY_BASE}/v1764695130/level_7_qt3s3p.png`,
+  8: `${CLOUDINARY_BASE}/v1764695132/level_8_aslmlf.png`,
+  9: `${CLOUDINARY_BASE}/v1764695131/level_9_azzhcv.png`,
+  10: `${CLOUDINARY_BASE}/v1764695130/level_10_tmdxn1.png`,
 };
 
 // 🎭 Анимации персонажей с 4 mood для каждого уровня
@@ -206,7 +192,7 @@ function getCharactersList(userLevel, userTotalXP) {
       name: CHARACTER_NAMES[level],
       description: CHARACTER_DESCRIPTIONS[level],
       isClosed: isClosed,
-      imageLink: isClosed ? LOCKED_CHARACTER_IMAGES[level] : CHARACTER_IMAGES[level],
+      imageLink: CHARACTER_IMAGES[level],  // 👈 Теперь всегда одна и та же картинка
       xpRequired: xpRequired,
       xpToUnlock: xpToUnlock
     });
