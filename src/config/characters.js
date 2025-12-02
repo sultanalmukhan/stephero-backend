@@ -32,18 +32,68 @@ const LOCKED_CHARACTER_IMAGES = {
   10: `${CLOUDINARY_BASE}/v1760952984/locked_10_ad8dby.png`,
 };
 
-// 🎞️ URL анимаций персонажей для каждого уровня
+// 🎭 Анимации персонажей с 4 mood для каждого уровня
 const CHARACTER_ANIMATIONS = {
-  1: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_1_mwgkqi.mp4`,
-  2: `${CLOUDINARY_VIDEO_BASE}/v1760456810/animation_2_dg8cb4.mp4`,
-  3: `${CLOUDINARY_VIDEO_BASE}/v1760456809/animation_3_gifsxx.mp4`,
-  4: `${CLOUDINARY_VIDEO_BASE}/v1760456810/animation_4_gf6dko.mp4`,
-  5: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_5_rt18cq.mp4`,
-  6: `${CLOUDINARY_VIDEO_BASE}/v1760456815/animation_6_mx5igh.mp4`,
-  7: `${CLOUDINARY_VIDEO_BASE}/v1760456809/animation_7_lmxleq.mp4`,
-  8: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_8_pzvj6d.mp4`,
-  9: `${CLOUDINARY_VIDEO_BASE}/v1760456807/animation_9_ogvri6.mp4`,
-  10: `${CLOUDINARY_VIDEO_BASE}/v1760456809/animation_10_mxhqpk.mp4`,
+  1: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689267/animation_1_mood_1_xuvgkf.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689261/animation_1_mood_2_rgmyve.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689262/animation_1_mood_3_srqct3.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689263/animation_1_mood_4_dokb0n.mp4`,
+  },
+  2: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689306/animation_2_mood_1_gqkken.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689304/animation_2_mood_2_f8fahf.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689304/animation_2_mood_3_xfevyq.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689303/animation_2_mood_4_gt1t95.mp4`,
+  },
+  3: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689327/animation_3_mood_1_ul7val.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689330/animation_3_mood_2_szdojv.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689327/animation_3_mood_3_ye6ou0.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689326/animation_3_mood_4_f3tcp5.mp4`,
+  },
+  4: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689441/animation_4_mood_1_uzwj9w.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689452/animation_4_mood_2_y8y4ga.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689440/animation_4_mood_3_c0yzs7.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689451/animation_4_mood_4_exroem.mp4`,
+  },
+  5: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689484/animation_5_mood_1_e2ushp.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689478/animation_5_mood_2_pnupig.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689481/animation_5_mood_3_erkuk3.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689482/animation_5_mood_4_zcrewy.mp4`,
+  },
+  6: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689499/animation_6_mood_1_ur9bkq.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689501/animation_6_mood_2_ogzoqc.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689508/animation_6_mood_3_huimsq.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689503/animation_6_mood_4_imqetx.mp4`,
+  },
+  7: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689544/animation_7_mood_1_gchiyw.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689542/animation_7_mood_2_kd6kvz.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689546/animation_7_mood_3_or5j3b.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689559/animation_7_mood_4_o2hcjd.mp4`,
+  },
+  8: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689600/animation_8_mood_1_ljqi0h.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689580/animation_8_mood_2_c0w445.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689583/animation_8_mood_3_tximpf.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689604/animation_8_mood_4_vboukf.mp4`,
+  },
+  9: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689625/animation_9_mood_1_jyljhu.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689637/animation_9_mood_2_chdqqm.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689631/animation_9_mood_3_fyi22h.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689632/animation_9_mood_4_l5twpx.mp4`,
+  },
+  10: {
+    mood_1: `${CLOUDINARY_VIDEO_BASE}/v1764689668/animation_10_mood_1_s3px7u.mp4`,
+    mood_2: `${CLOUDINARY_VIDEO_BASE}/v1764689673/animation_10_mood_2_pfei5r.mp4`,
+    mood_3: `${CLOUDINARY_VIDEO_BASE}/v1764689670/animation_10_mood_3_sdfcth.mp4`,
+    mood_4: `${CLOUDINARY_VIDEO_BASE}/v1764689664/animation_10_mood_4_x0za7v.mp4`,
+  },
 };
 
 // Имена персонажей для каждого уровня
@@ -89,18 +139,46 @@ const LEVEL_XP_REQUIREMENTS = {
 };
 
 /**
- * Получить данные персонажа для заданного уровня
+ * 🎭 Определить mood на основе процента прогресса
+ * @param {number} progressPercent - Процент выполнения цели (0-100+)
+ * @returns {string} mood_1, mood_2, mood_3, или mood_4
+ */
+function getMoodByProgress(progressPercent) {
+  if (progressPercent >= 100) {
+    return 'mood_4';  // 100%+ → супер-счастливый
+  } else if (progressPercent >= 66) {
+    return 'mood_3';  // 66-99% → веселый
+  } else if (progressPercent >= 33) {
+    return 'mood_2';  // 33-65% → нейтральный
+  } else {
+    return 'mood_1';  // 0-32% → грустный
+  }
+}
+
+/**
+ * Получить данные персонажа для заданного уровня с учетом прогресса
  * @param {number} level - Уровень пользователя
+ * @param {number} progressPercent - Процент выполнения дневной цели (0-100+)
  * @returns {Object} Данные персонажа
  */
-function getCharacterData(level) {
+function getCharacterData(level, progressPercent = 0) {
   const defaultLevel = 1;
+  const actualLevel = level || defaultLevel;
+  
+  // Определяем mood на основе прогресса
+  const mood = getMoodByProgress(progressPercent);
+  
+  // Получаем анимацию для этого уровня и mood
+  const animations = CHARACTER_ANIMATIONS[actualLevel] || CHARACTER_ANIMATIONS[defaultLevel];
+  const animationUrl = animations[mood] || animations.mood_1;
+  
   return {
-    image_url: CHARACTER_IMAGES[level] || CHARACTER_IMAGES[defaultLevel],
-    animation_url: CHARACTER_ANIMATIONS[level] || CHARACTER_ANIMATIONS[defaultLevel],
-    name: CHARACTER_NAMES[level] || CHARACTER_NAMES[defaultLevel],
-    description: CHARACTER_DESCRIPTIONS[level] || CHARACTER_DESCRIPTIONS[defaultLevel],
-    level: level
+    image_url: CHARACTER_IMAGES[actualLevel] || CHARACTER_IMAGES[defaultLevel],
+    animation_url: animationUrl,
+    name: CHARACTER_NAMES[actualLevel] || CHARACTER_NAMES[defaultLevel],
+    description: CHARACTER_DESCRIPTIONS[actualLevel] || CHARACTER_DESCRIPTIONS[defaultLevel],
+    level: actualLevel,
+    current_mood: mood  // Добавляем информацию о текущем mood
   };
 }
 
@@ -140,6 +218,7 @@ function getCharactersList(userLevel, userTotalXP) {
 module.exports = {
   getCharacterData,
   getCharactersList,
+  getMoodByProgress,
   CHARACTER_IMAGES,
   CHARACTER_ANIMATIONS,
   CHARACTER_NAMES,
