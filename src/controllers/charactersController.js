@@ -7,14 +7,22 @@ const { getCharactersList, LEVEL_XP_REQUIREMENTS } = require('../config/characte
  */
 async function getCharacters(req, res) {
   try {
-    const { user_id } = req.query;
+    const { user_id, language = 'en' } = req.query;
 
-    // Валидация
+    // Валидация user_id
     if (!user_id) {
       return res.status(400).json({ 
         error: 'Отсутствует обязательный параметр user_id' 
       });
     }
+
+    // Валидация языка
+    const supportedLanguages = [
+      'en', 'zh-Hans', 'hi', 'es', 'ar', 'pt', 'ru', 'kk',
+      'ja', 'fr', 'de', 'ko', 'vi', 'tr', 'it', 'th',
+      'pl', 'id', 'nl', 'cs', 'el', 'hu', 'sv', 'da', 'fi', 'no'
+    ];
+    const lang = supportedLanguages.includes(language) ? language : 'en';
 
     // Получаем данные пользователя
     const userResult = await db.query(
@@ -46,10 +54,10 @@ async function getCharacters(req, res) {
       console.log('✅ Новый пользователь создан при запросе персонажей:', user_id);
     }
 
-    // Получаем список персонажей
-    const characters = getCharactersList(userLevel, userTotalXP);
+    // Получаем список персонажей с переводами
+    const characters = getCharactersList(userLevel, userTotalXP, lang);
 
-    console.log(`🎮 Персонажи для пользователя ${user_id}:`);
+    console.log(`🎮 Персонажи для пользователя ${user_id} (язык: ${lang}):`);
     console.log(`   Уровень: ${userLevel}`);
     console.log(`   Total XP: ${userTotalXP}`);
     console.log(`   Открыто персонажей: ${userLevel}/10`);
@@ -57,7 +65,7 @@ async function getCharacters(req, res) {
     res.json(characters);
 
   } catch (error) {
-    console.error('Ошибка в getCharacters:', error);
+    console.error('❌ Ошибка в getCharacters:', error);
     res.status(500).json({ 
       error: 'Внутренняя ошибка сервера',
       message: error.message 
