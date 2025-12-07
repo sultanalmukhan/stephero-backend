@@ -161,7 +161,11 @@ async function getAchievements(req, res) {
   }
 
   // Валидация языка
-  const supportedLanguages = ['en', 'ru', 'kk'];
+  const supportedLanguages = [
+    'en', 'zh-Hans', 'hi', 'es', 'ar', 'pt', 'ru', 'kk', 
+    'ja', 'fr', 'de', 'ko', 'vi', 'tr', 'it', 'th', 
+    'pl', 'id', 'nl', 'cs', 'el', 'hu', 'sv', 'da', 'fi', 'no'
+  ];
   const lang = supportedLanguages.includes(language) ? language : 'en';
 
   try {
