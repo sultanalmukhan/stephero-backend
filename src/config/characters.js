@@ -5,8 +5,8 @@ const CLOUDINARY_CLOUD_NAME = 'dvfelpkla';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 const CLOUDINARY_VIDEO_BASE = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload`;
 
-// 🎨 URL картинок персонажей для каждого уровня
-const CHARACTER_IMAGES = {
+// 🎨 URL картинок персонажей (черный фон) для каждого уровня
+const CHARACTER_IMAGES_BLACK = {
   1: `${CLOUDINARY_BASE}/v1764695128/level_1_vmln0o.png`,
   2: `${CLOUDINARY_BASE}/v1764695128/level_2_fup8pn.png`,
   3: `${CLOUDINARY_BASE}/v1764695128/level_3_zhu9ey.png`,
@@ -17,6 +17,20 @@ const CHARACTER_IMAGES = {
   8: `${CLOUDINARY_BASE}/v1764695132/level_8_aslmlf.png`,
   9: `${CLOUDINARY_BASE}/v1764695131/level_9_azzhcv.png`,
   10: `${CLOUDINARY_BASE}/v1764695130/level_10_tmdxn1.png`,
+};
+
+// 🎨 URL картинок персонажей (прозрачный фон) для каждого уровня
+const CHARACTER_IMAGES_TRANSPARENT = {
+  1: `${CLOUDINARY_BASE}/v1761053784/home_1_ol52o7.png`,
+  2: `${CLOUDINARY_BASE}/v1761053784/home_2_r2zd4t.png`,
+  3: `${CLOUDINARY_BASE}/v1761053784/home_3_gwfzgv.png`,
+  4: `${CLOUDINARY_BASE}/v1761053785/home_4_mi1alr.png`,
+  5: `${CLOUDINARY_BASE}/v1761053785/home_5_cltq8l.png`,
+  6: `${CLOUDINARY_BASE}/v1761053785/home_6_pktwtb.png`,
+  7: `${CLOUDINARY_BASE}/v1761053785/home_7_lseqbj.png`,
+  8: `${CLOUDINARY_BASE}/v1761053786/home_8_xxrx4n.png`,
+  9: `${CLOUDINARY_BASE}/v1761053786/home_9_sub0yz.png`,
+  10: `${CLOUDINARY_BASE}/v1761053787/home_10_r3he8f.png`,
 };
 
 // 🎭 Анимации персонажей с 4 mood для каждого уровня
@@ -325,7 +339,7 @@ function getCharacterData(level, progressPercent = 0, language = 'en') {
   const descriptions = CHARACTER_DESCRIPTIONS[actualLevel] || CHARACTER_DESCRIPTIONS[defaultLevel];
   
   return {
-    image_url: CHARACTER_IMAGES[actualLevel] || CHARACTER_IMAGES[defaultLevel],
+    image_url: CHARACTER_IMAGES_BLACK[actualLevel] || CHARACTER_IMAGES_BLACK[defaultLevel],
     animation_url: animationUrl,
     name: names[language] || names.en,
     description: descriptions[language] || descriptions.en,
@@ -363,7 +377,8 @@ function getCharactersList(userLevel, userTotalXP, language = 'en') {
       name: names[language] || names.en,
       description: descriptions[language] || descriptions.en,
       isClosed: isClosed,
-      imageLink: CHARACTER_IMAGES[level],
+      imageLinkBlack: CHARACTER_IMAGES_BLACK[level],
+      imageLinkTransparent: CHARACTER_IMAGES_TRANSPARENT[level],
       xpRequired: xpRequired,
       xpToUnlock: xpToUnlock
     });
@@ -389,7 +404,8 @@ module.exports = {
   getCharactersList,
   getMoodByProgress,
   getSupportedLanguages,
-  CHARACTER_IMAGES,
+  CHARACTER_IMAGES_BLACK,
+  CHARACTER_IMAGES_TRANSPARENT,
   CHARACTER_ANIMATIONS,
   CHARACTER_NAMES,
   CHARACTER_DESCRIPTIONS,
