@@ -63,7 +63,6 @@ async function getCharacters(req, res) {
     console.log(`   Открыто персонажей: ${userLevel}/10`);
 
     res.json(characters);
-
   } catch (error) {
     console.error('❌ Ошибка в getCharacters:', error);
     res.status(500).json({ 
