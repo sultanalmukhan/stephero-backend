@@ -31,7 +31,7 @@ const VALIDATION_CONFIG = {
   HARD_CAP_THRESHOLD: 50000,       // После этого — обрезаем
   
   // 🆕 Режим работы
-  BLOCK_SUSPICIOUS: true,         // true = блокировать, false = только логировать
+  BLOCK_SUSPICIOUS: true,          // true = блокировать, false = только логировать
   DETAILED_LOGGING: true,          // Детальное логирование
   
   // Флаги подозрительности
@@ -49,15 +49,18 @@ async function validateSteps(userId, completedDays) {
     warnings: [],
     flags: [],
     totalStepsAdjusted: 0,
-    syncAnalysis: null  // 🆕 Анализ синхронизации
+    syncAnalysis: null
   };
 
   // Получаем историю пользователя
   const userHistory = await getUserStepsHistory(userId);
   const averageSteps = calculateAverageSteps(userHistory);
   
-  // 🆕 Получаем информацию о последней синхронизации
+  // Получаем информацию о последней синхронизации
   const lastSyncInfo = await getLastSyncInfo(userId);
+  
+  // 🆕 Переменная для хранения скорректированных шагов сегодня
+  let speedAdjustedTodaySteps = null;
   
   console.log(`\n🛡️ ═══════════════════════════════════════════════════════════`);
   console.log(`🛡️ STEPS VALIDATION START`);
@@ -66,7 +69,7 @@ async function validateSteps(userId, completedDays) {
   console.log(`   📊 Historical average: ${averageSteps} steps/day`);
   console.log(`   📅 Days to validate: ${completedDays.length}`);
   
-  // 🆕 Анализ синхронизации
+  // Анализ синхронизации
   if (lastSyncInfo) {
     const syncAnalysis = analyzeSyncPattern(lastSyncInfo, completedDays);
     result.syncAnalysis = syncAnalysis;
@@ -81,7 +84,7 @@ async function validateSteps(userId, completedDays) {
     console.log(`   │ Steps per hour: ${syncAnalysis.stepsPerHour.toFixed(0)}`);
     console.log(`   └──────────────────────`);
     
-    // 🆕 Проверка скорости набора шагов
+    // Проверка скорости набора шагов
     if (syncAnalysis.stepsPerMinute > VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE) {
       const flag = {
         type: 'UNREALISTIC_SPEED',
@@ -102,20 +105,14 @@ async function validateSteps(userId, completedDays) {
       console.log(`   │ ❌ Equivalent to: ${(syncAnalysis.stepsPerMinute * 60).toFixed(0)} steps/hour`);
       console.log(`   └══════════════════════════════════════`);
       
-      // 🆕 Если включена блокировка — корректируем шаги
+      // 🔧 Если включена блокировка — вычисляем скорректированные шаги
       if (VALIDATION_CONFIG.BLOCK_SUSPICIOUS) {
         const maxAllowedSteps = Math.floor(
           (syncAnalysis.timeSinceLastSync / 60) * VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE
         );
-        const adjustedTodaySteps = lastSyncInfo.last_steps + maxAllowedSteps;
+        speedAdjustedTodaySteps = lastSyncInfo.last_steps + maxAllowedSteps;
         
-        console.log(`   🔧 ADJUSTMENT: Capping today's steps to ${adjustedTodaySteps} (was ${syncAnalysis.currentTodaySteps})`);
-        
-        // Корректируем последний день (сегодня)
-        const todayIndex = completedDays.length - 1;
-        if (todayIndex >= 0) {
-          result.totalStepsAdjusted += (completedDays[todayIndex].steps - adjustedTodaySteps);
-        }
+        console.log(`   🔧 ADJUSTMENT: Capping today's steps to ${speedAdjustedTodaySteps} (was ${syncAnalysis.currentTodaySteps})`);
       }
     } else {
       console.log(`\n   ✅ Speed check PASSED: ${syncAnalysis.stepsPerMinute.toFixed(1)} steps/min (max: ${VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE})`);
@@ -131,13 +128,32 @@ async function validateSteps(userId, completedDays) {
     const day = completedDays[i];
     const isToday = i === completedDays.length - 1;
     
-    const validation = validateSingleDay(day, averageSteps, userHistory, isToday);
+    // 🔧 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Применяем корректировку по скорости к сегодняшнему дню
+    let dayToValidate = { ...day };
+    if (isToday && speedAdjustedTodaySteps !== null) {
+      dayToValidate.steps = speedAdjustedTodaySteps;
+    }
+    
+    const validation = validateSingleDay(dayToValidate, averageSteps, userHistory, isToday);
+    
+    // 🔧 Вычисляем финальные шаги с учётом обеих корректировок
+    let finalSteps = validation.adjustedSteps;
+    let wasAdjusted = validation.wasAdjusted;
+    
+    // Если была корректировка по скорости для сегодня
+    if (isToday && speedAdjustedTodaySteps !== null) {
+      finalSteps = Math.min(finalSteps, speedAdjustedTodaySteps);
+      wasAdjusted = true;
+      result.totalStepsAdjusted += (day.steps - finalSteps);
+    } else if (validation.wasAdjusted) {
+      result.totalStepsAdjusted += (day.steps - validation.adjustedSteps);
+    }
     
     result.validatedDays.push({
       ...day,
-      steps: validation.adjustedSteps,
+      steps: finalSteps,
       original_steps: day.steps,
-      was_adjusted: validation.wasAdjusted
+      was_adjusted: wasAdjusted
     });
 
     if (validation.warnings.length > 0) {
@@ -153,10 +169,6 @@ async function validateSteps(userId, completedDays) {
         type: f.type,
         details: f.details
       })));
-    }
-
-    if (validation.wasAdjusted) {
-      result.totalStepsAdjusted += (day.steps - validation.adjustedSteps);
     }
   }
 
