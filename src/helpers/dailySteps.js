@@ -16,8 +16,7 @@ function formatDateLocal(date) {
 }
 
 /**
- * ✅ ОБНОВЛЕНО: Сохранить день в базу (для новых дней)
- * Добавлена поддержка credits_earned
+ * ✅ Сохранить день в базу (для новых дней)
  */
 async function saveDailyStep(userId, dayData) {
   const { 
@@ -27,7 +26,7 @@ async function saveDailyStep(userId, dayData) {
     is_goal_completed, 
     is_streak_completed,
     is_finalized,
-    credits_earned = 0  // ✨ ДОБАВИЛИ
+    credits_earned = 0
   } = dayData;
   
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
@@ -49,10 +48,9 @@ async function saveDailyStep(userId, dayData) {
       is_goal_completed,
       is_streak_completed,
       is_finalized,
-      credits_earned  // ✨ ДОБАВИЛИ
+      credits_earned
     ]);
     
-    console.log(`✅ Сохранен день: ${date}, steps: ${steps}, finalized: ${is_finalized}, credits: ${credits_earned}`);
     return result.rows[0];
   } catch (error) {
     console.error('❌ Ошибка при сохранении daily_step:', error);
@@ -61,8 +59,7 @@ async function saveDailyStep(userId, dayData) {
 }
 
 /**
- * ✅ ОБНОВЛЕНО: Обновить существующий день (для обновления сегодняшнего дня или финализации)
- * Добавлена поддержка credits_earned
+ * ✅ Обновить существующий день
  */
 async function updateDailyStep(userId, date, updates) {
   const { 
@@ -70,7 +67,7 @@ async function updateDailyStep(userId, date, updates) {
     is_goal_completed, 
     is_streak_completed, 
     is_finalized,
-    credits_earned  // ✨ ДОБАВИЛИ
+    credits_earned
   } = updates;
   
   try {
@@ -102,7 +99,6 @@ async function updateDailyStep(userId, date, updates) {
       paramIndex++;
     }
 
-    // ✨ ДОБАВИЛИ
     if (credits_earned !== undefined) {
       setClauses.push(`credits_earned = $${paramIndex}`);
       values.push(credits_earned);
@@ -120,7 +116,6 @@ async function updateDailyStep(userId, date, updates) {
     `;
     
     const result = await db.query(query, values);
-    console.log(`✅ Обновлен день: ${date}, updates:`, updates);
     return result.rows[0];
   } catch (error) {
     console.error('❌ Ошибка при обновлении daily_step:', error);
@@ -129,25 +124,10 @@ async function updateDailyStep(userId, date, updates) {
 }
 
 /**
- * ✅ ИСПРАВЛЕНО: Подсчет текущего streak с учетом Freeze
- * 
- * ЛОГИКА:
- * - Если сегодняшний день (не финализирован) НЕ выполнен → пропускаем его, считаем со вчера
- * - Если сегодняшний день (не финализирован) выполнен → включаем его в streak
- * - Streak сбрасывается только когда финализированный день не выполнен (и нет freeze)
- * - День считается выполненным если is_streak_completed ИЛИ is_freeze_used
- * - Для стрика нужно ≥7000 шагов (STREAK_THRESHOLD)
- * 
- * ПРИМЕРЫ:
- * День 1-10: выполнены (≥7000 шагов) → streak = 10
- * День 11 (сегодня): 1000/5000 шагов → показываем streak = 10 (не считаем сегодня)
- * День 12 (новый сегодня): проверяем день 11 финализирован и не выполнен → streak = 0
+ * ✅ Подсчет текущего streak с учетом Freeze
  */
 async function calculateCurrentStreak(userId) {
   try {
-    console.log('\n🔍 === calculateCurrentStreak START ===');
-    console.log('   User ID:', userId);
-    
     const query = `
       SELECT date, steps, steps_goal, is_streak_completed, is_finalized, is_freeze_used
       FROM daily_steps
@@ -159,11 +139,7 @@ async function calculateCurrentStreak(userId) {
     const result = await db.query(query, [userId]);
     const days = result.rows;
     
-    console.log('   📊 Days found:', days.length);
-    
     if (days.length === 0) {
-      console.log('   ❌ No days found, streak = 0');
-      console.log('🔍 === calculateCurrentStreak END ===\n');
       return 0;
     }
     
@@ -173,12 +149,10 @@ async function calculateCurrentStreak(userId) {
     
     if (!days[0].is_finalized) {
       todayStr = firstDayStr;
-      console.log('   📅 Today (from non-finalized):', todayStr);
     } else {
       const nextDay = new Date(firstDayDate);
       nextDay.setDate(nextDay.getDate() + 1);
       todayStr = formatDateLocal(nextDay);
-      console.log('   📅 Today (calculated as day after last):', todayStr);
     }
     
     let streak = 0;
@@ -187,7 +161,6 @@ async function calculateCurrentStreak(userId) {
     
     if (firstDayStr !== todayStr) {
       expectedDate.setDate(expectedDate.getDate() - 1);
-      console.log('   ⏮️  Starting from:', formatDateLocal(expectedDate));
     }
     
     for (const day of days) {
@@ -195,48 +168,31 @@ async function calculateCurrentStreak(userId) {
       const dayStr = formatDateLocal(dayDate);
       const expectedStr = formatDateLocal(expectedDate);
       
-      console.log(`\n   📆 Checking: ${dayStr}`);
-      console.log(`      Expected: ${expectedStr}`);
-      
       if (dayStr !== expectedStr) {
-        console.log('      ❌ Day gap detected, breaking streak');
         break;
       }
       
       let isStreakValid = false;
       
       if (day.is_finalized) {
-        // ✅ ОБНОВЛЕНО: Учитываем is_freeze_used
         isStreakValid = day.is_streak_completed || day.is_freeze_used;
-        const reason = day.is_freeze_used ? 'freeze used' : 'from flag';
-        console.log(`      Finalized: ${isStreakValid ? '✅' : '❌'} (${reason})`);
       } else {
-        const threshold = STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
-        isStreakValid = day.steps >= threshold;
-        console.log(`      Today: ${day.steps} >= ${threshold}? ${isStreakValid ? '✅' : '❌'}`);
+        isStreakValid = day.steps >= STREAK_THRESHOLD;
       }
       
       if (isStreakValid) {
         streak++;
-        console.log(`      ✅ Streak continues! Count: ${streak}`);
         expectedDate.setDate(expectedDate.getDate() - 1);
       } else {
-        // 🔧 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
-        // Если это сегодняшний день (не финализирован) и не выполнен - пропускаем его
         if (!day.is_finalized) {
-          console.log('      ⏭️  Today not completed yet, skipping to yesterday');
           expectedDate.setDate(expectedDate.getDate() - 1);
-          continue;  // ✅ Продолжаем проверять со вчерашнего дня
+          continue;
         } else {
-          // ❌ Финализированный день не выполнен - streak прерывается
-          console.log('      ❌ Finalized day not completed, breaking streak');
           break;
         }
       }
     }
     
-    console.log(`\n   🔥 FINAL STREAK: ${streak}`);
-    console.log('🔍 === calculateCurrentStreak END ===\n');
     return streak;
   } catch (error) {
     console.error('❌ Ошибка при подсчете current_streak:', error);
@@ -245,25 +201,10 @@ async function calculateCurrentStreak(userId) {
 }
 
 /**
- * ✅ ИСПРАВЛЕНО: Подсчет самого длинного streak с учетом Freeze
- * 
- * ЛОГИКА:
- * - Считает максимальный streak среди финализированных дней
- * - Сравнивает с текущим streak (может включать сегодня)
- * - Возвращает максимум из двух значений
- * - Гарантирует: longest_streak >= current_streak
- * - День считается выполненным если is_streak_completed ИЛИ is_freeze_used
- * 
- * ПРИМЕРЫ:
- * Финализированные дни: streak = 15
- * Текущий streak: 20 (включая сегодня)
- * → longest_streak = 20 ✅
+ * ✅ Подсчет самого длинного streak с учетом Freeze
  */
 async function calculateLongestStreak(userId) {
   try {
-    console.log('\n🔍 === calculateLongestStreak START ===');
-    console.log('   User ID:', userId);
-    
     const query = `
       SELECT date, is_streak_completed, is_freeze_used
       FROM daily_steps
@@ -274,11 +215,7 @@ async function calculateLongestStreak(userId) {
     const result = await db.query(query, [userId]);
     const days = result.rows;
     
-    console.log('   📊 Finalized days found:', days.length);
-    
     if (days.length === 0) {
-      console.log('   ❌ No finalized days, longest = 0');
-      console.log('🔍 === calculateLongestStreak END ===\n');
       return 0;
     }
     
@@ -297,21 +234,16 @@ async function calculateLongestStreak(userId) {
         const expectedDateStr = formatDateLocal(prevDateObj);
         
         if (currentDateStr !== expectedDateStr) {
-          console.log(`   ⚠️  Gap detected: ${prevDateStr} -> ${currentDateStr}, resetting streak`);
           maxStreak = Math.max(maxStreak, currentStreak);
           currentStreak = 0;
         }
       }
       
-      // ✅ ОБНОВЛЕНО: Учитываем is_freeze_used
       const isStreakValid = day.is_streak_completed || day.is_freeze_used;
       
       if (isStreakValid) {
         currentStreak++;
-        const reason = day.is_freeze_used ? '(freeze)' : '';
-        console.log(`   ✅ ${currentDateStr}: streak continues (${currentStreak}) ${reason}`);
       } else {
-        console.log(`   ❌ ${currentDateStr}: streak broken`);
         maxStreak = Math.max(maxStreak, currentStreak);
         currentStreak = 0;
       }
@@ -320,18 +252,11 @@ async function calculateLongestStreak(userId) {
     }
     
     maxStreak = Math.max(maxStreak, currentStreak);
-    console.log(`   🏆 Max streak from finalized days: ${maxStreak}`);
     
-    // 🔧 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
-    // Сравниваем с текущим streak (может включать сегодня)
+    // Сравниваем с текущим streak
     const activeStreak = await calculateCurrentStreak(userId);
-    console.log(`   🔥 Current active streak: ${activeStreak}`);
     
-    const finalLongestStreak = Math.max(maxStreak, activeStreak);
-    console.log(`\n   🏆 FINAL LONGEST STREAK: ${finalLongestStreak}`);
-    console.log('🔍 === calculateLongestStreak END ===\n');
-    
-    return finalLongestStreak;
+    return Math.max(maxStreak, activeStreak);
     
   } catch (error) {
     console.error('❌ Ошибка при подсчете longest_streak:', error);
@@ -340,24 +265,13 @@ async function calculateLongestStreak(userId) {
 }
 
 /**
- * 🧊 ОБНОВЛЕНО: Обработка системы Freeze для пользователя
- * - Free users: каждые 7 дней → +1 Freeze (максимум 2)
- * - Premium users: каждые 7 дней → +2 Freeze (максимум 4)
- * - Автоматически использует Freeze на провальные дни
- * - Обновляет freeze_count и last_freeze_earned_at
+ * 🧊 Обработка системы Freeze для пользователя
  */
 async function processFreezeSystem(userId, hasSubscription = false) {
   try {
-    console.log('\n🧊 === processFreezeSystem START ===');
-    console.log('   User ID:', userId);
-    console.log('   Subscription:', hasSubscription ? '✅ Premium' : '❌ Free');
-
-    // 🔒 Параметры в зависимости от подписки
-    const FREEZE_PERIOD_DAYS = 7;  // Каждые 7 дней для всех
-    const FREEZE_PER_PERIOD = hasSubscription ? 2 : 1;  // Premium: 2, Free: 1
-    const MAX_FREEZE_COUNT = hasSubscription ? 4 : 2;  // Premium: 4, Free: 2
-
-    console.log(`   📊 Settings: ${FREEZE_PER_PERIOD} freeze(s) every ${FREEZE_PERIOD_DAYS} days, max ${MAX_FREEZE_COUNT}`);
+    const FREEZE_PERIOD_DAYS = 7;
+    const FREEZE_PER_PERIOD = hasSubscription ? 2 : 1;
+    const MAX_FREEZE_COUNT = hasSubscription ? 4 : 2;
 
     // 1. Получить текущее состояние Freeze
     const userResult = await db.query(
@@ -366,7 +280,6 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     );
 
     if (userResult.rows.length === 0) {
-      console.log('   ❌ User not found');
       return { freezeCount: 0, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
     }
 
@@ -374,14 +287,8 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     let freezeCount = user.freeze_count || 0;
     let lastFreezeEarnedAt = user.last_freeze_earned_at;
 
-    console.log('   Current freeze_count:', freezeCount);
-    console.log('   Last freeze earned at:', lastFreezeEarnedAt);
-
-    // 2. Если первый sync - инициализировать на дату первого завершенного дня
+    // 2. Если первый sync - инициализировать
     if (!lastFreezeEarnedAt) {
-      console.log('   ⚙️  First sync - initializing freeze system');
-      
-      // Найти самый ранний завершенный день
       const firstDayResult = await db.query(
         'SELECT MIN(date) as first_date FROM daily_steps WHERE user_id = $1 AND is_finalized = true',
         [userId]
@@ -390,12 +297,9 @@ async function processFreezeSystem(userId, hasSubscription = false) {
       let initDate;
       if (firstDayResult.rows.length > 0 && firstDayResult.rows[0].first_date) {
         initDate = new Date(firstDayResult.rows[0].first_date);
-        console.log('   📅 Using first completed day:', formatDateLocal(initDate));
       } else {
-        // Если нет завершенных дней, используем 30 дней назад
         initDate = new Date();
         initDate.setDate(initDate.getDate() - 30);
-        console.log('   📅 No completed days found, using 30 days ago:', formatDateLocal(initDate));
       }
       
       await db.query(
@@ -403,9 +307,7 @@ async function processFreezeSystem(userId, hasSubscription = false) {
         [initDate, userId]
       );
       
-      // ✅ НЕ возвращаемся сразу - продолжаем обработку!
       lastFreezeEarnedAt = initDate;
-      console.log('   ✅ Freeze system initialized, continuing processing...');
     }
 
     // 3. Вычислить сколько периодов прошло
@@ -414,12 +316,7 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     const daysSince = Math.floor((now - lastEarned) / (1000 * 60 * 60 * 24));
     const periods = Math.floor(daysSince / FREEZE_PERIOD_DAYS);
 
-    console.log('   Days since last earned:', daysSince);
-    console.log('   Periods to process:', periods);
-
     if (periods === 0) {
-      console.log('   ℹ️  No new periods to process');
-      console.log('🧊 === processFreezeSystem END ===\n');
       return { freezeCount, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
     }
 
@@ -428,8 +325,6 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const endDate = formatDateLocal(yesterday);
-
-    console.log('   Processing days from', startDate, 'to', endDate);
 
     const daysResult = await db.query(
       `SELECT date, steps, steps_goal, is_streak_completed, is_finalized, is_freeze_used
@@ -440,7 +335,6 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     );
 
     const days = daysResult.rows;
-    console.log('   Days found:', days.length);
 
     // 5. Симулировать начисление и использование Freeze
     let tempFreezeCount = freezeCount;
@@ -454,20 +348,15 @@ async function processFreezeSystem(userId, hasSubscription = false) {
       const daysSinceStart = Math.floor((dayDate - lastEarned) / (1000 * 60 * 60 * 24));
       const periodForThisDay = Math.floor(daysSinceStart / FREEZE_PERIOD_DAYS);
 
-      // Проверить не пора ли начислить Freeze
       if (periodForThisDay > periodsProcessed && periodsProcessed < periods) {
         const freezesToAdd = Math.min(FREEZE_PER_PERIOD, MAX_FREEZE_COUNT - tempFreezeCount);
         if (freezesToAdd > 0) {
           tempFreezeCount += freezesToAdd;
           freezesEarned += freezesToAdd;
-          console.log(`   🎁 ${freezesToAdd} Freeze(s) earned on period ${periodForThisDay + 1} (count: ${tempFreezeCount})`);
-        } else {
-          console.log(`   ⚠️  Freeze limit reached (${MAX_FREEZE_COUNT}), cannot earn more`);
         }
         periodsProcessed = periodForThisDay;
       }
 
-      // Проверить нужно ли использовать Freeze
       const dayStr = formatDateLocal(dayDate);
       if (!day.is_streak_completed && day.is_finalized && !day.is_freeze_used) {
         if (tempFreezeCount > 0) {
@@ -478,9 +367,6 @@ async function processFreezeSystem(userId, hasSubscription = false) {
             [userId, day.date]
           );
           freezeUsedDays.push(dayStr);
-          console.log(`   ❄️  Freeze used on ${dayStr} (remaining: ${tempFreezeCount})`);
-        } else {
-          console.log(`   ❌ No Freeze available for ${dayStr}, streak broken`);
         }
       }
     }
@@ -492,18 +378,10 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     await db.query(
       `UPDATE user_progress 
        SET freeze_count = $1, 
-           last_freeze_earned_at = $2,
-           total_freezes_earned = total_freezes_earned + $3,
-           total_freezes_used = total_freezes_used + $4
-       WHERE user_id = $5`,
-      [tempFreezeCount, newLastFreezeEarnedAt, freezesEarned, freezesUsed, userId]
+           last_freeze_earned_at = $2
+       WHERE user_id = $3`,
+      [tempFreezeCount, newLastFreezeEarnedAt, userId]
     );
-
-    console.log('   ✅ Final freeze_count:', tempFreezeCount);
-    console.log('   ✅ Freezes earned this sync:', freezesEarned);
-    console.log('   ✅ Freezes used this sync:', freezesUsed);
-    console.log('   ✅ New last_freeze_earned_at:', formatDateLocal(newLastFreezeEarnedAt));
-    console.log('🧊 === processFreezeSystem END ===\n');
 
     return {
       freezeCount: tempFreezeCount,
