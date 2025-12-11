@@ -7,11 +7,11 @@ const {
   calculateLongestStreak,
   processFreezeSystem,
   GOAL_CONFIG,
-  STREAK_THRESHOLD  // 🔥 Импортируем константу стрика
+  STREAK_THRESHOLD
 } = require('../helpers/dailySteps');
 
-// 🔒 Level cap убран - все пользователи могут прогрессировать без ограничений
-// Бонусы остаются только для premium (has_subscription = true)
+// 🛡️ Импортируем систему валидации шагов
+const { validateSteps } = require('../helpers/stepsValidation');
 
 async function syncSteps(req, res) {
   try {
@@ -19,10 +19,10 @@ async function syncSteps(req, res) {
       user_id, 
       current_goal_level,
       completed_days,
-      has_subscription = false  // 🔒 Бонусы только для premium
+      has_subscription = false
     } = req.body;
 
-    // Валидация
+    // Валидация обязательных полей
     if (!user_id || !current_goal_level || !completed_days || completed_days.length === 0) {
       return res.status(400).json({ 
         error: 'Отсутствуют обязательные поля',
@@ -33,7 +33,16 @@ async function syncSteps(req, res) {
     // Создать пользователя если не существует
     await ensureUserExists(user_id);
 
-    // 🔒 Обновить статус подписки в БД
+    // 🛡️ ВАЛИДАЦИЯ ШАГОВ (защита от накрутки)
+    const validationResult = await validateSteps(user_id, completed_days);
+    const validatedDays = validationResult.validatedDays;
+
+    // Логируем если были корректировки
+    if (validationResult.totalStepsAdjusted > 0) {
+      console.log(`🛡️ Steps adjusted for ${user_id}: -${validationResult.totalStepsAdjusted} steps`);
+    }
+
+    // Обновить статус подписки в БД
     await updateSubscriptionStatus(user_id, has_subscription);
 
     // Получить состояние ДО изменений
@@ -45,13 +54,14 @@ async function syncSteps(req, res) {
     await updateGoalLevel(user_id, current_goal_level);
 
     // Разделяем массив: последний = сегодня, остальные = previousDays
-    const today = completed_days[completed_days.length - 1];
-    const previousDays = completed_days.slice(0, -1);
+    // 🛡️ Используем валидированные данные
+    const today = validatedDays[validatedDays.length - 1];
+    const previousDays = validatedDays.slice(0, -1);
 
     console.log(`📊 Синхронизация для ${user_id}:`);
     console.log(`   Подписка: ${has_subscription ? '✅ Активна' : '❌ Нет'}`);
     console.log(`   Завершенных дней: ${previousDays.length}`);
-    console.log(`   Сегодня: ${today.date} (${today.steps} шагов)`);
+    console.log(`   Сегодня: ${today.date} (${today.steps} шагов${today.was_adjusted ? ` [adjusted from ${today.original_steps}]` : ''})`);
 
     let totalXPGained = 0;
     let bonusXPEarned = 0;
@@ -82,7 +92,6 @@ async function syncSteps(req, res) {
       }
     }
 
-    // 🔧 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ:
     // 🧊 Обработать систему Freeze ПОСЛЕ финализации всех дней
     const freezeResult = await processFreezeSystem(user_id, has_subscription);
 
@@ -97,26 +106,27 @@ async function syncSteps(req, res) {
     const todayGoal = GOAL_CONFIG[today.goal_level].steps;
     const todayPercentage = Math.floor((today.steps / todayGoal) * 100);
     const todayGoalReached = today.steps >= todayGoal;
-    const isStreakCompletedToday = today.steps >= STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
+    const isStreakCompletedToday = today.steps >= STREAK_THRESHOLD;
 
-    // 🧊 Вычислить дни до следующего Freeze (7 дней для всех)
+    // 🧊 Вычислить дни до следующего Freeze
     const userProgressResult = await db.query(
       'SELECT last_freeze_earned_at FROM user_progress WHERE user_id = $1',
       [user_id]
     );
     
-    let daysUntilNextFreeze = 7;  // Изменено с 14 на 7
+    let daysUntilNextFreeze = 7;
     if (userProgressResult.rows.length > 0 && userProgressResult.rows[0].last_freeze_earned_at) {
       const lastEarned = new Date(userProgressResult.rows[0].last_freeze_earned_at);
       const now = new Date();
       const daysSince = Math.floor((now - lastEarned) / (1000 * 60 * 60 * 24));
-      daysUntilNextFreeze = Math.max(0, 7 - (daysSince % 7));  // Изменено с 14 на 7
+      daysUntilNextFreeze = Math.max(0, 7 - (daysSince % 7));
     }
 
-    // 🔒 Динамический max freeze count
+    // Динамический max freeze count
     const maxFreezeCount = has_subscription ? 4 : 2;
 
-    res.json({
+    // 🛡️ Формируем ответ с информацией о валидации
+    const response = {
       ...result,
       
       // Общее
@@ -141,18 +151,29 @@ async function syncSteps(req, res) {
       // 🧊 Freeze status
       freeze_status: {
         current_freeze_count: freezeResult.freezeCount,
-        max_freeze_count: maxFreezeCount,  // Динамический (2 или 4)
+        max_freeze_count: maxFreezeCount,
         days_until_next_freeze: daysUntilNextFreeze,
         freezes_earned_this_sync: freezeResult.freezesEarned,
         freezes_used_this_sync: freezeResult.freezesUsed,
         freeze_used_on_dates: freezeResult.freezeUsedDays
       },
 
-      // 🔒 Subscription status (без level cap)
+      // Subscription status
       subscription_status: {
         has_subscription: has_subscription
       }
-    });
+    };
+
+    // 🛡️ Добавляем информацию о валидации (только если были проблемы)
+    if (validationResult.warnings.length > 0 || validationResult.flags.length > 0) {
+      response.validation_info = {
+        steps_adjusted: validationResult.totalStepsAdjusted,
+        warnings_count: validationResult.warnings.length,
+        flags_count: validationResult.flags.length
+      };
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('Ошибка в syncSteps:', error);
@@ -164,7 +185,7 @@ async function syncSteps(req, res) {
 }
 
 /**
- * 🔒 Обновление статуса подписки
+ * Обновление статуса подписки
  */
 async function updateSubscriptionStatus(userId, hasSubscription) {
   await db.query(
@@ -175,7 +196,7 @@ async function updateSubscriptionStatus(userId, hasSubscription) {
 }
 
 /**
- * 🔒 Обработка завершенного дня (бонусы только для premium)
+ * Обработка завершенного дня (бонусы только для premium)
  */
 async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
   const { date, steps, goal_level } = day;
@@ -188,14 +209,14 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
   const bonusPercent = GOAL_CONFIG[goal_level].bonus;
   const isGoalCompleted = steps >= stepsGoal;
-  const isStreakCompleted = steps >= STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
+  const isStreakCompleted = steps >= STREAK_THRESHOLD;
 
-  // ✅ Credits для всех, бонусы только для подписчиков
+  // Credits для всех, бонусы только для подписчиков
   let creditsEarned = 0;
-  let canEarnBonus = hasSubscription;  // 🔒 Бонусы только для подписчиков
+  let canEarnBonus = hasSubscription;
   
-  if (isGoalCompleted) {  // ✅ Credits для ВСЕХ (если цель выполнена)
-    creditsEarned = goal_level * 10;  // Простая формула: goal_level 1=10, 2=20, 3=30, 4=40
+  if (isGoalCompleted) {
+    creditsEarned = goal_level * 10;
     console.log(`💰 Credits calculated: goal_level=${goal_level} → ${creditsEarned} credits`);
   }
 
@@ -213,14 +234,13 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
     
     const xpAmount = steps * 0.1;
 
-    // Начисляем базовый XP всем пользователям без ограничений
     await db.query(
       'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
       [xpAmount, steps, creditsEarned, userId]
     );
     xpGained = xpAmount;
 
-    // 🔒 Бонус только для подписчиков
+    // Бонус только для подписчиков
     if (isGoalCompleted && canEarnBonus) {
       bonusXP = parseFloat((steps * bonusPercent * 0.1).toFixed(1));
       
@@ -266,7 +286,6 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
     if (difference > 0) {
       const xpAmount = difference * 0.1;
 
-      // Начисляем базовый XP всем пользователям без ограничений
       await db.query(
         'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2, total_credits = total_credits + $3, total_credits_earned = total_credits_earned + $3 WHERE user_id = $4',
         [xpAmount, difference, creditsEarned, userId]
@@ -277,7 +296,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
       console.warn(`⚠️ Шаги уменьшились для ${date}: ${oldSteps} → ${steps}`);
     }
 
-    // 🔒 Бонус только для подписчиков
+    // Бонус только для подписчиков
     if (isGoalCompleted && canEarnBonus) {
       bonusXP = parseFloat((steps * bonusPercent * 0.1).toFixed(1));
       
@@ -321,7 +340,7 @@ async function processTodayDay(userId, day) {
 
   const stepsGoal = GOAL_CONFIG[goal_level].steps;
   const isGoalCompleted = steps >= stepsGoal;
-  const isStreakCompleted = steps >= STREAK_THRESHOLD;  // 🔥 Статичное число для стрика
+  const isStreakCompleted = steps >= STREAK_THRESHOLD;
 
   const existingDay = await db.query(
     'SELECT steps FROM daily_steps WHERE user_id = $1 AND date = $2',
@@ -335,7 +354,6 @@ async function processTodayDay(userId, day) {
     
     const xpAmount = steps * 0.1;
 
-    // Начисляем базовый XP всем пользователям без ограничений
     await db.query(
       'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
       [xpAmount, steps, userId]
@@ -365,7 +383,6 @@ async function processTodayDay(userId, day) {
     if (difference > 0) {
       const xpAmount = difference * 0.1;
 
-      // Начисляем базовый XP всем пользователям без ограничений
       await db.query(
         'UPDATE user_progress SET total_xp = total_xp + $1, total_steps = total_steps + $2 WHERE user_id = $3',
         [xpAmount, difference, userId]
@@ -396,7 +413,7 @@ async function updateGoalLevel(userId, goalLevel) {
 }
 
 /**
- * 🔄 Расчет прогресса с новой таблицей уровней
+ * Расчет прогресса с новой таблицей уровней
  */
 async function getFinalProgress(userId) {
   const result = await db.query(
@@ -405,17 +422,17 @@ async function getFinalProgress(userId) {
   );
 
   if (result.rows.length === 0) {
-    const characterData = getCharacterData(1, 0);  // 👈 Передаем 0% прогресса
+    const characterData = getCharacterData(1, 0);
     return {
       total_steps: 0,
       current_xp: 0,
       current_level: 1,
-      xp_to_next_level: LEVEL_XP_REQUIREMENTS[2], // 8400
+      xp_to_next_level: LEVEL_XP_REQUIREMENTS[2],
       total_xp: 0,
       total_credits: 0,
       character_image_url: characterData.image_url,
       character_animation_url: characterData.animation_url,
-      character_mood: characterData.current_mood,  // 👈 Добавляем mood в ответ
+      character_mood: characterData.current_mood,
       current_streak: 0,
       longest_streak: 0
     };
@@ -424,7 +441,7 @@ async function getFinalProgress(userId) {
   const user = result.rows[0];
   const totalXP = parseFloat(user.total_xp);
   
-  // 🔄 Вычисляем правильный уровень на основе total_xp
+  // Вычисляем правильный уровень на основе total_xp
   let level = 1;
   
   for (let i = 10; i >= 1; i--) {
@@ -434,7 +451,7 @@ async function getFinalProgress(userId) {
     }
   }
 
-  // ✅ Обновляем current_level в БД если изменился
+  // Обновляем current_level в БД если изменился
   if (level !== user.current_level) {
     await db.query(
       'UPDATE user_progress SET current_level = $1 WHERE user_id = $2',
@@ -443,7 +460,7 @@ async function getFinalProgress(userId) {
     console.log(`📊 Level updated in DB: ${user.current_level} → ${level}`);
   }
 
-  // 🎯 Получаем сегодняшний прогресс для определения mood
+  // Получаем сегодняшний прогресс для определения mood
   const todayResult = await db.query(
     'SELECT steps FROM daily_steps WHERE user_id = $1 AND date = CURRENT_DATE',
     [userId]
@@ -459,7 +476,6 @@ async function getFinalProgress(userId) {
   const currentXP = parseFloat((totalXP - LEVEL_XP_REQUIREMENTS[level]).toFixed(1));
   const xpToNext = level < 10 ? LEVEL_XP_REQUIREMENTS[level + 1] - LEVEL_XP_REQUIREMENTS[level] : 0;
 
-  // 👈 Передаем процент прогресса в getCharacterData
   const characterData = getCharacterData(level, todayProgressPercent);
 
   const currentStreak = await calculateCurrentStreak(userId);
@@ -474,7 +490,7 @@ async function getFinalProgress(userId) {
     total_credits: parseInt(user.total_credits) || 0,
     character_image_url: characterData.image_url,
     character_animation_url: characterData.animation_url,
-    character_mood: characterData.current_mood,  // 👈 Добавляем mood в ответ
+    character_mood: characterData.current_mood,
     current_streak: currentStreak,
     longest_streak: longestStreak
   };
