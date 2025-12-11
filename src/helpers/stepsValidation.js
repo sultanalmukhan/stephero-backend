@@ -171,8 +171,8 @@ async function validateSteps(userId, completedDays) {
     }
   }
 
-  // 🆕 Сохраняем информацию о текущей синхронизации
-  await saveCurrentSyncInfo(userId, completedDays);
+  // 🔧 ИСПРАВЛЕНО: Сохраняем СКОРРЕКТИРОВАННЫЕ шаги, а не оригинальные
+  await saveCurrentSyncInfo(userId, result.validatedDays);
 
   // Логируем подозрительную активность
   if (result.flags.length > 0) {
