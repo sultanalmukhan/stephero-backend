@@ -59,30 +59,13 @@ async function validateSteps(userId, completedDays) {
   // Получаем информацию о последней синхронизации
   const lastSyncInfo = await getLastSyncInfo(userId);
   
-  // 🆕 Переменная для хранения скорректированных шагов сегодня
+  // Переменная для хранения скорректированных шагов сегодня
   let speedAdjustedTodaySteps = null;
-  
-  console.log(`\n🛡️ ═══════════════════════════════════════════════════════════`);
-  console.log(`🛡️ STEPS VALIDATION START`);
-  console.log(`🛡️ ═══════════════════════════════════════════════════════════`);
-  console.log(`   👤 User: ${userId}`);
-  console.log(`   📊 Historical average: ${averageSteps} steps/day`);
-  console.log(`   📅 Days to validate: ${completedDays.length}`);
   
   // Анализ синхронизации
   if (lastSyncInfo) {
     const syncAnalysis = analyzeSyncPattern(lastSyncInfo, completedDays);
     result.syncAnalysis = syncAnalysis;
-    
-    console.log(`\n   ⏱️  ─── SYNC ANALYSIS ───`);
-    console.log(`   │ Last sync: ${lastSyncInfo.last_sync_at}`);
-    console.log(`   │ Time since last sync: ${syncAnalysis.timeSinceLastSync} seconds (${syncAnalysis.timeSinceLastSyncFormatted})`);
-    console.log(`   │ Last recorded steps: ${lastSyncInfo.last_steps}`);
-    console.log(`   │ Current steps (today): ${syncAnalysis.currentTodaySteps}`);
-    console.log(`   │ Steps difference: +${syncAnalysis.stepsDifference}`);
-    console.log(`   │ Steps per minute: ${syncAnalysis.stepsPerMinute.toFixed(1)}`);
-    console.log(`   │ Steps per hour: ${syncAnalysis.stepsPerHour.toFixed(0)}`);
-    console.log(`   └──────────────────────`);
     
     // Проверка скорости набора шагов
     if (syncAnalysis.stepsPerMinute > VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE) {
@@ -98,30 +81,15 @@ async function validateSteps(userId, completedDays) {
       };
       result.flags.push({ date: 'sync_analysis', ...flag });
       
-      console.log(`\n   🚨 ═══ SUSPICIOUS ACTIVITY DETECTED ═══`);
-      console.log(`   │ ❌ UNREALISTIC SPEED: ${syncAnalysis.stepsPerMinute.toFixed(1)} steps/min`);
-      console.log(`   │ ❌ Max allowed: ${VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE} steps/min`);
-      console.log(`   │ ❌ This means: +${syncAnalysis.stepsDifference} steps in ${syncAnalysis.timeSinceLastSyncFormatted}`);
-      console.log(`   │ ❌ Equivalent to: ${(syncAnalysis.stepsPerMinute * 60).toFixed(0)} steps/hour`);
-      console.log(`   └══════════════════════════════════════`);
-      
-      // 🔧 Если включена блокировка — откатываем к предыдущему значению (0 новых шагов)
+      // Если включена блокировка — откатываем к предыдущему значению
       if (VALIDATION_CONFIG.BLOCK_SUSPICIOUS) {
-        // Не даём частичные шаги — откатываем полностью к последнему sync
         speedAdjustedTodaySteps = lastSyncInfo.last_steps;
-        
-        console.log(`   🔧 BLOCKED: Rolling back to ${speedAdjustedTodaySteps} steps (was ${syncAnalysis.currentTodaySteps})`);
-        console.log(`   🔧 Fake steps rejected: ${syncAnalysis.stepsDifference}`);
+        console.log(`🛡️ BLOCKED: ${userId} | +${syncAnalysis.stepsDifference} steps in ${syncAnalysis.timeSinceLastSyncFormatted} (${syncAnalysis.stepsPerMinute.toFixed(0)} steps/min) → rejected`);
       }
-    } else {
-      console.log(`\n   ✅ Speed check PASSED: ${syncAnalysis.stepsPerMinute.toFixed(1)} steps/min (max: ${VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE})`);
     }
-  } else {
-    console.log(`\n   ℹ️  First sync for this user - no previous data to compare`);
   }
 
   // Валидация каждого дня
-  console.log(`\n   📅 ─── DAY-BY-DAY VALIDATION ───`);
   
   for (let i = 0; i < completedDays.length; i++) {
     const day = completedDays[i];
@@ -171,33 +139,17 @@ async function validateSteps(userId, completedDays) {
     }
   }
 
-  // 🔧 ИСПРАВЛЕНО: Сохраняем СКОРРЕКТИРОВАННЫЕ шаги, а не оригинальные
+  // Сохраняем скорректированные шаги
   await saveCurrentSyncInfo(userId, result.validatedDays);
-
-  // Логируем подозрительную активность
-  if (result.flags.length > 0) {
-    await logSuspiciousActivity(userId, result.flags, result.syncAnalysis);
-  }
-
-  console.log(`\n   📊 ─── VALIDATION SUMMARY ───`);
-  console.log(`   │ Total warnings: ${result.warnings.length}`);
-  console.log(`   │ Total flags: ${result.flags.length}`);
-  console.log(`   │ Steps adjusted: ${result.totalStepsAdjusted}`);
-  console.log(`   │ Block mode: ${VALIDATION_CONFIG.BLOCK_SUSPICIOUS ? 'ON' : 'OFF (logging only)'}`);
-  console.log(`   └──────────────────────────`);
-  console.log(`🛡️ ═══════════════════════════════════════════════════════════`);
-  console.log(`🛡️ STEPS VALIDATION END`);
-  console.log(`🛡️ ═══════════════════════════════════════════════════════════\n`);
 
   return result;
 }
 
 /**
- * 🔍 Валидация одного дня
+ * Валидация одного дня
  */
 function validateSingleDay(day, averageSteps, userHistory, isToday = false) {
   const { date, steps } = day;
-  const dayLabel = isToday ? `${date} (TODAY)` : date;
   
   const result = {
     adjustedSteps: steps,
@@ -205,9 +157,6 @@ function validateSingleDay(day, averageSteps, userHistory, isToday = false) {
     warnings: [],
     flags: []
   };
-
-  console.log(`   │`);
-  console.log(`   ├─ ${dayLabel}: ${steps} steps`);
 
   // 1. Проверка отрицательных значений
   if (steps < VALIDATION_CONFIG.MIN_STEPS_PER_DAY) {
@@ -217,7 +166,6 @@ function validateSingleDay(day, averageSteps, userHistory, isToday = false) {
       type: 'NEGATIVE_STEPS',
       details: { original: steps, adjusted: 0 }
     });
-    console.log(`   │  └─ ❌ NEGATIVE → adjusted to 0`);
     return result;
   }
 
@@ -233,13 +181,11 @@ function validateSingleDay(day, averageSteps, userHistory, isToday = false) {
         cap: VALIDATION_CONFIG.HARD_CAP_THRESHOLD
       }
     });
-    console.log(`   │  └─ 🚫 HARD CAP EXCEEDED → adjusted to ${VALIDATION_CONFIG.HARD_CAP_THRESHOLD}`);
   }
 
   // 3. Проверка soft cap
   if (steps > VALIDATION_CONFIG.SOFT_CAP_THRESHOLD && steps <= VALIDATION_CONFIG.HARD_CAP_THRESHOLD) {
     result.warnings.push(`High step count: ${steps}`);
-    console.log(`   │  └─ ⚠️  SOFT CAP WARNING (>${VALIDATION_CONFIG.SOFT_CAP_THRESHOLD})`);
   }
 
   // 4. Проверка спайка относительно среднего
@@ -250,7 +196,6 @@ function validateSingleDay(day, averageSteps, userHistory, isToday = false) {
       type: 'SUSPICIOUS_SPIKE',
       details: { steps, average: averageSteps, multiplier }
     });
-    console.log(`   │  └─ 📈 SPIKE: x${multiplier} vs average (${averageSteps})`);
   }
 
   // 5. Проверка круглых чисел
@@ -260,7 +205,6 @@ function validateSingleDay(day, averageSteps, userHistory, isToday = false) {
         type: 'SUSPICIOUS_ROUND_NUMBER',
         details: { steps }
       });
-      console.log(`   │  └─ 🎯 ROUND NUMBER: ${steps} (suspicious)`);
     }
   }
 
@@ -278,21 +222,15 @@ function validateSingleDay(day, averageSteps, userHistory, isToday = false) {
             multiplier: dailyMultiplier.toFixed(1)
           }
         });
-        console.log(`   │  └─ 📊 DAILY SPIKE: x${dailyMultiplier.toFixed(1)} vs yesterday (${previousDay.steps})`);
       }
     }
-  }
-
-  // Если всё ок
-  if (result.flags.length === 0 && result.warnings.length === 0) {
-    console.log(`   │  └─ ✅ OK`);
   }
 
   return result;
 }
 
 /**
- * 🆕 Получение информации о последней синхронизации
+ * Получение информации о последней синхронизации
  */
 async function getLastSyncInfo(userId) {
   try {
@@ -312,14 +250,12 @@ async function getLastSyncInfo(userId) {
       last_steps: result.rows[0].last_sync_steps || 0
     };
   } catch (error) {
-    // Колонки могут не существовать — это нормально для первого запуска
-    console.log(`   ℹ️  Could not get last sync info (columns may not exist yet)`);
     return null;
   }
 }
 
 /**
- * 🆕 Сохранение информации о текущей синхронизации
+ * Сохранение информации о текущей синхронизации
  */
 async function saveCurrentSyncInfo(userId, completedDays) {
   try {
@@ -334,8 +270,7 @@ async function saveCurrentSyncInfo(userId, completedDays) {
       [todaySteps, userId]
     );
   } catch (error) {
-    // Игнорируем если колонки не существуют
-    console.log(`   ℹ️  Could not save sync info (columns may not exist yet)`);
+    // Игнорируем ошибки
   }
 }
 
@@ -385,7 +320,7 @@ function analyzeSyncPattern(lastSyncInfo, completedDays) {
 }
 
 /**
- * 📊 Получение истории шагов пользователя
+ * Получение истории шагов пользователя
  */
 async function getUserStepsHistory(userId, daysLimit = 30) {
   try {
@@ -399,13 +334,12 @@ async function getUserStepsHistory(userId, daysLimit = 30) {
     );
     return result.rows.reverse();
   } catch (error) {
-    console.error('Error fetching user history:', error);
     return [];
   }
 }
 
 /**
- * 📈 Расчёт среднего количества шагов
+ * Расчёт среднего количества шагов
  */
 function calculateAverageSteps(history) {
   if (history.length < VALIDATION_CONFIG.MIN_DAYS_FOR_AVERAGE) {
@@ -416,57 +350,17 @@ function calculateAverageSteps(history) {
 }
 
 /**
- * 📝 Детальное логирование подозрительной активности
- */
-async function logSuspiciousActivity(userId, flags, syncAnalysis) {
-  const timestamp = new Date().toISOString();
-  
-  console.log(`\n🚨 ═══════════════════════════════════════════════════════════`);
-  console.log(`🚨 SUSPICIOUS ACTIVITY REPORT`);
-  console.log(`🚨 ═══════════════════════════════════════════════════════════`);
-  console.log(`   Timestamp: ${timestamp}`);
-  console.log(`   User ID: ${userId}`);
-  console.log(`   Total flags: ${flags.length}`);
-  
-  if (syncAnalysis) {
-    console.log(`\n   📊 Sync Analysis:`);
-    console.log(`   │ Time since last sync: ${syncAnalysis.timeSinceLastSyncFormatted}`);
-    console.log(`   │ Steps difference: +${syncAnalysis.stepsDifference}`);
-    console.log(`   │ Speed: ${syncAnalysis.stepsPerMinute.toFixed(1)} steps/min`);
-    console.log(`   │ Equivalent: ${syncAnalysis.stepsPerHour.toFixed(0)} steps/hour`);
-  }
-  
-  console.log(`\n   🚩 Flags:`);
-  flags.forEach((flag, index) => {
-    console.log(`   │`);
-    console.log(`   ├─ [${index + 1}] ${flag.type}`);
-    console.log(`   │  Date: ${flag.date}`);
-    console.log(`   │  Details: ${JSON.stringify(flag.details)}`);
-  });
-  
-  console.log(`🚨 ═══════════════════════════════════════════════════════════\n`);
-
-  // TODO: Сохранять в БД для анализа
-  // await db.query(
-  //   `INSERT INTO suspicious_activity (user_id, flags, sync_analysis, created_at) 
-  //    VALUES ($1, $2, $3, NOW())`,
-  //   [userId, JSON.stringify(flags), JSON.stringify(syncAnalysis)]
-  // );
-}
-
-/**
- * 🔧 Получение конфигурации
+ * Получение конфигурации
  */
 function getValidationConfig() {
   return { ...VALIDATION_CONFIG };
 }
 
 /**
- * 🔧 Обновление конфигурации
+ * Обновление конфигурации
  */
 function updateValidationConfig(updates) {
   Object.assign(VALIDATION_CONFIG, updates);
-  console.log('Validation config updated:', VALIDATION_CONFIG);
 }
 
 module.exports = {
