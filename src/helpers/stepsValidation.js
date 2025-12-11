@@ -105,14 +105,13 @@ async function validateSteps(userId, completedDays) {
       console.log(`   │ ❌ Equivalent to: ${(syncAnalysis.stepsPerMinute * 60).toFixed(0)} steps/hour`);
       console.log(`   └══════════════════════════════════════`);
       
-      // 🔧 Если включена блокировка — вычисляем скорректированные шаги
+      // 🔧 Если включена блокировка — откатываем к предыдущему значению (0 новых шагов)
       if (VALIDATION_CONFIG.BLOCK_SUSPICIOUS) {
-        const maxAllowedSteps = Math.floor(
-          (syncAnalysis.timeSinceLastSync / 60) * VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE
-        );
-        speedAdjustedTodaySteps = lastSyncInfo.last_steps + maxAllowedSteps;
+        // Не даём частичные шаги — откатываем полностью к последнему sync
+        speedAdjustedTodaySteps = lastSyncInfo.last_steps;
         
-        console.log(`   🔧 ADJUSTMENT: Capping today's steps to ${speedAdjustedTodaySteps} (was ${syncAnalysis.currentTodaySteps})`);
+        console.log(`   🔧 BLOCKED: Rolling back to ${speedAdjustedTodaySteps} steps (was ${syncAnalysis.currentTodaySteps})`);
+        console.log(`   🔧 Fake steps rejected: ${syncAnalysis.stepsDifference}`);
       }
     } else {
       console.log(`\n   ✅ Speed check PASSED: ${syncAnalysis.stepsPerMinute.toFixed(1)} steps/min (max: ${VALIDATION_CONFIG.MAX_STEPS_PER_MINUTE})`);
