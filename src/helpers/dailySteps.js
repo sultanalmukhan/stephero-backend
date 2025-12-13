@@ -265,7 +265,12 @@ async function calculateLongestStreak(userId) {
 }
 
 /**
- * 🧊 Обработка системы Freeze для пользователя
+ * 🧊 ИСПРАВЛЕННАЯ система Freeze
+ * 
+ * Правила:
+ * - Free user: +1 freeze каждые 7 дней, максимум 2
+ * - Premium user: +2 freeze каждые 7 дней, максимум 4
+ * - При провале дня (< 7000 шагов) тратится 1 freeze
  */
 async function processFreezeSystem(userId, hasSubscription = false) {
   try {
@@ -273,9 +278,10 @@ async function processFreezeSystem(userId, hasSubscription = false) {
     const FREEZE_PER_PERIOD = hasSubscription ? 2 : 1;
     const MAX_FREEZE_COUNT = hasSubscription ? 4 : 2;
 
-    // 1. Получить текущее состояние Freeze
+    // 1. Получить текущее состояние пользователя
     const userResult = await db.query(
-      'SELECT freeze_count, last_freeze_earned_at FROM user_progress WHERE user_id = $1',
+      `SELECT freeze_count, last_freeze_earned_at, total_freezes_earned, total_freezes_used, created_at 
+       FROM user_progress WHERE user_id = $1`,
       [userId]
     );
 
@@ -285,109 +291,125 @@ async function processFreezeSystem(userId, hasSubscription = false) {
 
     const user = userResult.rows[0];
     let freezeCount = user.freeze_count || 0;
-    let lastFreezeEarnedAt = user.last_freeze_earned_at;
+    let lastFreezeEarnedAt = user.last_freeze_earned_at || user.created_at;
+    let totalFreezesEarned = user.total_freezes_earned || 0;
+    let totalFreezesUsed = user.total_freezes_used || 0;
 
-    // 2. Если первый sync - инициализировать
-    if (!lastFreezeEarnedAt) {
-      const firstDayResult = await db.query(
-        'SELECT MIN(date) as first_date FROM daily_steps WHERE user_id = $1 AND is_finalized = true',
-        [userId]
-      );
-      
-      let initDate;
-      if (firstDayResult.rows.length > 0 && firstDayResult.rows[0].first_date) {
-        initDate = new Date(firstDayResult.rows[0].first_date);
-      } else {
-        initDate = new Date();
-        initDate.setDate(initDate.getDate() - 30);
-      }
-      
-      await db.query(
-        'UPDATE user_progress SET last_freeze_earned_at = $1 WHERE user_id = $2',
-        [initDate, userId]
-      );
-      
-      lastFreezeEarnedAt = initDate;
-    }
-
-    // 3. Вычислить сколько периодов прошло
-    const now = new Date();
-    const lastEarned = new Date(lastFreezeEarnedAt);
-    const daysSince = Math.floor((now - lastEarned) / (1000 * 60 * 60 * 24));
-    const periods = Math.floor(daysSince / FREEZE_PERIOD_DAYS);
-
-    if (periods === 0) {
-      return { freezeCount, freezeUsedDays: [], freezesEarned: 0, freezesUsed: 0 };
-    }
-
-    // 4. Получить все дни с момента последнего начисления до вчера
-    const startDate = formatDateLocal(lastEarned);
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const endDate = formatDateLocal(yesterday);
-
-    const daysResult = await db.query(
-      `SELECT date, steps, steps_goal, is_streak_completed, is_finalized, is_freeze_used
+    // 2. Получить все НЕобработанные финализированные дни
+    //    (провальные дни где ещё не применён freeze)
+    const failedDaysResult = await db.query(
+      `SELECT date, steps, is_streak_completed, is_freeze_used
        FROM daily_steps
-       WHERE user_id = $1 AND date >= $2 AND date <= $3
+       WHERE user_id = $1 
+         AND is_finalized = true 
+         AND is_streak_completed = false 
+         AND is_freeze_used = false
        ORDER BY date ASC`,
-      [userId, startDate, endDate]
+      [userId]
     );
 
-    const days = daysResult.rows;
-
-    // 5. Симулировать начисление и использование Freeze
-    let tempFreezeCount = freezeCount;
-    let periodsProcessed = 0;
-    let freezesEarned = 0;
-    let freezesUsed = 0;
+    const failedDays = failedDaysResult.rows;
     const freezeUsedDays = [];
+    let freezesEarnedThisSync = 0;
+    let freezesUsedThisSync = 0;
 
-    for (const day of days) {
+    // 3. Обрабатываем каждый провальный день последовательно
+    for (const day of failedDays) {
       const dayDate = new Date(day.date);
-      const daysSinceStart = Math.floor((dayDate - lastEarned) / (1000 * 60 * 60 * 24));
-      const periodForThisDay = Math.floor(daysSinceStart / FREEZE_PERIOD_DAYS);
-
-      if (periodForThisDay > periodsProcessed && periodsProcessed < periods) {
-        const freezesToAdd = Math.min(FREEZE_PER_PERIOD, MAX_FREEZE_COUNT - tempFreezeCount);
-        if (freezesToAdd > 0) {
-          tempFreezeCount += freezesToAdd;
-          freezesEarned += freezesToAdd;
+      
+      // 3.1 Проверяем, нужно ли начислить freeze ДО этого дня
+      const lastEarnedDate = new Date(lastFreezeEarnedAt);
+      const daysSinceLastEarned = Math.floor((dayDate - lastEarnedDate) / (1000 * 60 * 60 * 24));
+      
+      // Начисляем freeze за каждый прошедший период (7 дней)
+      while (daysSinceLastEarned >= FREEZE_PERIOD_DAYS) {
+        const nextEarnDate = new Date(lastEarnedDate);
+        nextEarnDate.setDate(nextEarnDate.getDate() + FREEZE_PERIOD_DAYS);
+        
+        // Проверяем что дата начисления <= дата провального дня
+        if (nextEarnDate <= dayDate) {
+          const freezesToAdd = Math.min(FREEZE_PER_PERIOD, MAX_FREEZE_COUNT - freezeCount);
+          
+          if (freezesToAdd > 0) {
+            freezeCount += freezesToAdd;
+            totalFreezesEarned += freezesToAdd;
+            freezesEarnedThisSync += freezesToAdd;
+            console.log(`🧊 +${freezesToAdd} freeze earned (total: ${freezeCount}/${MAX_FREEZE_COUNT})`);
+          }
+          
+          lastFreezeEarnedAt = nextEarnDate;
+          lastEarnedDate.setTime(nextEarnDate.getTime());
+        } else {
+          break;
         }
-        periodsProcessed = periodForThisDay;
+        
+        // Пересчитываем дни
+        const newDaysSince = Math.floor((dayDate - lastEarnedDate) / (1000 * 60 * 60 * 24));
+        if (newDaysSince < FREEZE_PERIOD_DAYS) break;
       }
 
-      const dayStr = formatDateLocal(dayDate);
-      if (!day.is_streak_completed && day.is_finalized && !day.is_freeze_used) {
-        if (tempFreezeCount > 0) {
-          tempFreezeCount--;
-          freezesUsed++;
-          await db.query(
-            'UPDATE daily_steps SET is_freeze_used = true WHERE user_id = $1 AND date = $2',
-            [userId, day.date]
-          );
-          freezeUsedDays.push(dayStr);
-        }
+      // 3.2 Пробуем использовать freeze на этот провальный день
+      if (freezeCount > 0) {
+        freezeCount--;
+        totalFreezesUsed++;
+        freezesUsedThisSync++;
+        
+        const dayStr = formatDateLocal(dayDate);
+        freezeUsedDays.push(dayStr);
+        
+        // Обновляем день в БД
+        await db.query(
+          'UPDATE daily_steps SET is_freeze_used = true WHERE user_id = $1 AND date = $2',
+          [userId, day.date]
+        );
+        
+        console.log(`🧊 Freeze used on ${dayStr} (remaining: ${freezeCount})`);
+      } else {
+        // Нет freeze — стрик сломан на этом дне
+        const dayStr = formatDateLocal(dayDate);
+        console.log(`❌ No freeze available for ${dayStr} — streak broken`);
       }
     }
 
-    // 6. Обновить last_freeze_earned_at и freeze_count
-    const newLastFreezeEarnedAt = new Date(lastEarned);
-    newLastFreezeEarnedAt.setDate(newLastFreezeEarnedAt.getDate() + (periods * FREEZE_PERIOD_DAYS));
+    // 4. Проверяем начисление freeze до СЕГОДНЯ (для будущих провалов)
+    const today = new Date();
+    const lastEarnedDate = new Date(lastFreezeEarnedAt);
+    const daysSinceLastEarned = Math.floor((today - lastEarnedDate) / (1000 * 60 * 60 * 24));
+    const periodsToAdd = Math.floor(daysSinceLastEarned / FREEZE_PERIOD_DAYS);
+    
+    if (periodsToAdd > 0) {
+      for (let i = 0; i < periodsToAdd; i++) {
+        const freezesToAdd = Math.min(FREEZE_PER_PERIOD, MAX_FREEZE_COUNT - freezeCount);
+        
+        if (freezesToAdd > 0) {
+          freezeCount += freezesToAdd;
+          totalFreezesEarned += freezesToAdd;
+          freezesEarnedThisSync += freezesToAdd;
+          console.log(`🧊 +${freezesToAdd} freeze earned (total: ${freezeCount}/${MAX_FREEZE_COUNT})`);
+        }
+      }
+      
+      // Обновляем дату последнего начисления
+      lastFreezeEarnedAt = new Date(lastEarnedDate);
+      lastFreezeEarnedAt.setDate(lastFreezeEarnedAt.getDate() + (periodsToAdd * FREEZE_PERIOD_DAYS));
+    }
 
+    // 5. Сохраняем всё в БД
     await db.query(
       `UPDATE user_progress 
        SET freeze_count = $1, 
-           last_freeze_earned_at = $2
-       WHERE user_id = $3`,
-      [tempFreezeCount, newLastFreezeEarnedAt, userId]
+           last_freeze_earned_at = $2,
+           total_freezes_earned = $3,
+           total_freezes_used = $4
+       WHERE user_id = $5`,
+      [freezeCount, lastFreezeEarnedAt, totalFreezesEarned, totalFreezesUsed, userId]
     );
 
     return {
-      freezeCount: tempFreezeCount,
+      freezeCount,
       freezeUsedDays,
-      freezesEarned,
-      freezesUsed
+      freezesEarned: freezesEarnedThisSync,
+      freezesUsed: freezesUsedThisSync
     };
 
   } catch (error) {
