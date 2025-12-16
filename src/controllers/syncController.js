@@ -216,7 +216,7 @@ async function processPreviousDay(userId, day, currentLevel, hasSubscription) {
   let canEarnBonus = hasSubscription;
   
   if (isGoalCompleted) {
-    creditsEarned = goal_level * 10;
+    creditsEarned = GOAL_CONFIG[goal_level].credits;
     console.log(`💰 Credits calculated: goal_level=${goal_level} → ${creditsEarned} credits`);
   }
 
