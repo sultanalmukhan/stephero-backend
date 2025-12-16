@@ -2,7 +2,6 @@
  * 🎯 Unified Goals Configuration
  * Single source of truth for all goal levels
  */
-
 const GOALS = [
   {
     level: 1,
@@ -11,6 +10,7 @@ const GOALS = [
     steps: 7000,
     distance_km: 5.3,
     bonus_percent: 0,
+    credits: 10,
     is_free: true,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761739960/goal_1_animation_hatwuj.mp4"
   },
@@ -21,6 +21,7 @@ const GOALS = [
     steps: 8500,
     distance_km: 6.4,
     bonus_percent: 20,
+    credits: 20,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740011/goal_2_animation_yixhkn.mp4"
   },
@@ -31,6 +32,7 @@ const GOALS = [
     steps: 10000,
     distance_km: 7.5,
     bonus_percent: 40,
+    credits: 30,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740013/goal_3_animation_jzmyok.mp4"
   },
@@ -41,6 +43,7 @@ const GOALS = [
     steps: 12000,
     distance_km: 9.0,
     bonus_percent: 60,
+    credits: 40,
     is_free: false,
     animation_url: "https://res.cloudinary.com/dvfelpkla/video/upload/v1761740013/goal_4_animation_zxrvob.mp4"
   }
@@ -48,12 +51,13 @@ const GOALS = [
 
 /**
  * Legacy format for backward compatibility with existing code
- * Maps level number to { steps, bonus }
+ * Maps level number to { steps, bonus, credits }
  */
 const GOAL_CONFIG = GOALS.reduce((acc, goal) => {
   acc[goal.level] = {
     steps: goal.steps,
-    bonus: goal.bonus_percent / 100  // Convert 10 -> 0.10
+    bonus: goal.bonus_percent / 100,  // Convert 20 -> 0.20
+    credits: goal.credits
   };
   return acc;
 }, {});
