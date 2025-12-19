@@ -191,7 +191,7 @@ const CHARACTER_NAMES = {
   }
 };
 
-// 📝 Описания персонажей с локализацией
+// 📝 Описания персонажей с локализацией (старая версия - оставлена для совместимости)
 const CHARACTER_DESCRIPTIONS = {
   1: {
     en: 'Just starting your fitness journey. Every step counts!', 'zh-Hans': '刚开始你的健身之旅。每一步都很重要！', hi: 'अपनी फिटनेस यात्रा शुरू करना। हर कदम मायने रखता है!', es: 'Comenzando tu viaje de fitness. ¡Cada paso cuenta!',
@@ -285,6 +285,61 @@ const CHARACTER_DESCRIPTIONS = {
   }
 };
 
+// 📖 История Level 1 (базовая) - все 26 языков
+const LEVEL_1_STORY = {
+  en: 'After escaping the wolf raid, the young raccoon surveys the ruins of his home. He finds a trail of pawprints leading north—the wolves took survivors. He makes a promise: he will free them all.',
+  'zh-Hans': '逃离狼群袭击后，年轻的浣熊审视着家园的废墟。他发现了一串向北延伸的爪印——狼群带走了幸存者。他许下承诺：他将解救所有人。',
+  hi: 'भेड़िये के हमले से बचने के बाद, युवा रैकून अपने घर के खंडहरों का सर्वेक्षण करता है। उसे उत्तर की ओर जाने वाले पंजों के निशान मिलते हैं—भेड़ियों ने बचे लोगों को ले लिया। वह वादा करता है: वह सभी को मुक्त करेगा।',
+  es: 'Tras escapar del ataque de los lobos, el joven mapache observa las ruinas de su hogar. Encuentra un rastro de huellas que conduce al norte—los lobos se llevaron a los sobrevivientes. Hace una promesa: los liberará a todos.',
+  ar: 'بعد الهروب من غارة الذئاب، يفحص الراكون الصغير أنقاض منزله. يجد أثراً لآثار الأقدام المتجهة شمالاً—لقد أخذت الذئاب الناجين. يقطع وعداً: سيحررهم جميعاً.',
+  pt: 'Após escapar do ataque dos lobos, o jovem guaxinim examina as ruínas de sua casa. Ele encontra um rastro de pegadas levando ao norte—os lobos levaram os sobreviventes. Ele faz uma promessa: libertará todos eles.',
+  ru: 'Сбежав от волчьего набега, молодой енот осматривает руины своего дома. Он находит след отпечатков лап, ведущих на север—волки забрали выживших. Он даёт обещание: он освободит их всех.',
+  kk: 'Қасқырлардың шабуылынан қашып құтылғаннан кейін, жас енот үйінің қирандыларын қарайды. Ол солтүстікке бағытталған аяқ іздерін табады—қасқырлар аман қалғандарды алып кетті. Ол уәде береді: барлығын босатамын.',
+  ja: '狼の襲撃から逃れた後、若いアライグマは故郷の廃墟を見渡す。北へ続く足跡を発見する—狼たちが生存者を連れ去ったのだ。彼は誓う：すべての者を解放する。',
+  fr: 'Après avoir échappé au raid des loups, le jeune raton laveur examine les ruines de sa maison. Il trouve une traînée d\'empreintes menant au nord—les loups ont emmené les survivants. Il fait une promesse : il les libérera tous.',
+  de: 'Nach der Flucht vor dem Wolfsangriff begutachtet der junge Waschbär die Ruinen seines Zuhauses. Er findet eine Spur von Pfotenabdrücken nach Norden—die Wölfe haben die Überlebenden mitgenommen. Er gibt ein Versprechen: Er wird sie alle befreien.',
+  ko: '늑대의 습격에서 탈출한 후, 젊은 너구리는 집의 폐허를 둘러본다. 북쪽으로 향하는 발자국 흔적을 발견한다—늑대들이 생존자들을 데려갔다. 그는 약속한다: 모두를 구출하겠다고.',
+  vi: 'Sau khi thoát khỏi cuộc tấn công của bầy sói, chú gấu trúc non khảo sát đống đổ nát của ngôi nhà. Chú tìm thấy dấu chân hướng về phía bắc—bầy sói đã bắt những người sống sót. Chú hứa: sẽ giải thoát tất cả.',
+  tr: 'Kurt baskınından kaçtıktan sonra, genç rakun evinin kalıntılarını inceler. Kuzeye giden pati izleri bulur—kurtlar hayatta kalanları götürmüş. Bir söz verir: hepsini kurtaracak.',
+  it: 'Dopo essere sfuggito all\'attacco dei lupi, il giovane procione osserva le rovine della sua casa. Trova una scia di impronte che conducono a nord—i lupi hanno portato via i sopravvissuti. Fa una promessa: li libererà tutti.',
+  th: 'หลังจากหนีจากการโจมตีของหมาป่า แรคคูนตัวน้อยสำรวจซากปรักหักพังของบ้าน เขาพบรอยอุ้งเท้าที่นำไปทางเหนือ—หมาป่าพาผู้รอดชีวิตไป เขาสัญญา: เขาจะปลดปล่อยพวกเขาทั้งหมด',
+  pl: 'Po ucieczce przed najazdem wilków, młody szop ogląda ruiny swojego domu. Znajduje ślad łap prowadzący na północ—wilki zabrały ocalałych. Składa obietnicę: uwolni ich wszystkich.',
+  id: 'Setelah melarikan diri dari serangan serigala, rakun muda memeriksa reruntuhan rumahnya. Ia menemukan jejak kaki menuju utara—serigala membawa para penyintas. Ia berjanji: ia akan membebaskan mereka semua.',
+  nl: 'Na de ontsnapping aan de wolvenoverval, bekijkt de jonge wasbeer de ruïnes van zijn huis. Hij vindt een spoor van pootafdrukken naar het noorden—de wolven hebben overlevenden meegenomen. Hij doet een belofte: hij zal ze allemaal bevrijden.',
+  cs: 'Po úniku před vlčím nájezdem mladý mýval prohlíží trosky svého domova. Najde stopu tlapek vedoucích na sever—vlci odvedli přeživší. Slibuje: všechny je osvobodí.',
+  el: 'Αφού ξέφυγε από την επιδρομή των λύκων, ο νεαρός ρακούν εξετάζει τα ερείπια του σπιτιού του. Βρίσκει ένα μονοπάτι από πατημασιές που οδηγούν βόρεια—οι λύκοι πήραν επιζώντες. Δίνει υπόσχεση: θα τους ελευθερώσει όλους.',
+  hu: 'Miután megszökött a farkastámadás elől, a fiatal mosómedve szemléli otthona romjait. Északi irányba vezető mancsnyomokat talál—a farkasok elvitték a túlélőket. Ígéretet tesz: mindnyájukat kiszabadítja.',
+  sv: 'Efter att ha flytt från varganfallet undersöker den unga tvättbjörnen ruinerna av sitt hem. Han hittar ett spår av tassavtryck som leder norrut—vargarna tog med sig överlevande. Han ger ett löfte: han ska befria dem alla.',
+  da: 'Efter at være undsluppet ulveangreb undersøger den unge vaskebjørn ruinerne af sit hjem. Han finder et spor af poter, der fører nordpå—ulvene tog overlevende med. Han lover: han vil befri dem alle.',
+  fi: 'Paettuaan susihyökkäyksestä nuori pesukarhu tarkastelee kotinsa raunioita. Hän löytää tassunjälkien polun, joka johtaa pohjoiseen—sudet veivät selviytyneet. Hän antaa lupauksen: hän vapauttaa heidät kaikki.',
+  no: 'Etter å ha rømt fra ulveangrepet, undersøker den unge vaskebjørnen ruinene av hjemmet sitt. Han finner et spor av poteavtrykk som leder nordover—ulvene tok med seg overlevende. Han gir et løfte: han skal befri dem alle.'
+};
+
+// 📖 Истории для остальных уровней (пока копии Level 1)
+const LEVEL_2_STORY = LEVEL_1_STORY;
+const LEVEL_3_STORY = LEVEL_1_STORY;
+const LEVEL_4_STORY = LEVEL_1_STORY;
+const LEVEL_5_STORY = LEVEL_1_STORY;
+const LEVEL_6_STORY = LEVEL_1_STORY;
+const LEVEL_7_STORY = LEVEL_1_STORY;
+const LEVEL_8_STORY = LEVEL_1_STORY;
+const LEVEL_9_STORY = LEVEL_1_STORY;
+const LEVEL_10_STORY = LEVEL_1_STORY;
+
+// 📖 Объединенная константа со всеми историями
+const CHARACTER_STORIES = {
+  1: LEVEL_1_STORY,
+  2: LEVEL_2_STORY,
+  3: LEVEL_3_STORY,
+  4: LEVEL_4_STORY,
+  5: LEVEL_5_STORY,
+  6: LEVEL_6_STORY,
+  7: LEVEL_7_STORY,
+  8: LEVEL_8_STORY,
+  9: LEVEL_9_STORY,
+  10: LEVEL_10_STORY
+};
+
 // 📊 Требования XP для каждого уровня
 const LEVEL_XP_REQUIREMENTS = {
   1: 0,           // Старт
@@ -337,12 +392,14 @@ function getCharacterData(level, progressPercent = 0, language = 'en') {
   // Получаем переводы
   const names = CHARACTER_NAMES[actualLevel] || CHARACTER_NAMES[defaultLevel];
   const descriptions = CHARACTER_DESCRIPTIONS[actualLevel] || CHARACTER_DESCRIPTIONS[defaultLevel];
+  const stories = CHARACTER_STORIES[actualLevel] || CHARACTER_STORIES[defaultLevel];
   
   return {
     image_url: CHARACTER_IMAGES_BLACK[actualLevel] || CHARACTER_IMAGES_BLACK[defaultLevel],
     animation_url: animationUrl,
     name: names[language] || names.en,
     description: descriptions[language] || descriptions.en,
+    story: stories[language] || stories.en,
     level: actualLevel,
     current_mood: mood
   };
@@ -371,11 +428,13 @@ function getCharactersList(userLevel, userTotalXP, language = 'en') {
     // Получаем переводы
     const names = CHARACTER_NAMES[level];
     const descriptions = CHARACTER_DESCRIPTIONS[level];
+    const stories = CHARACTER_STORIES[level];
     
     characters.push({
       level: level,
       name: names[language] || names.en,
       description: descriptions[language] || descriptions.en,
+      story: stories[language] || stories.en,
       isClosed: isClosed,
       imageLinkBlack: CHARACTER_IMAGES_BLACK[level],
       imageLinkTransparent: CHARACTER_IMAGES_TRANSPARENT[level],
@@ -409,6 +468,7 @@ module.exports = {
   CHARACTER_ANIMATIONS,
   CHARACTER_NAMES,
   CHARACTER_DESCRIPTIONS,
+  CHARACTER_STORIES,
   LEVEL_XP_REQUIREMENTS,
   CLOUDINARY_CLOUD_NAME
 };
