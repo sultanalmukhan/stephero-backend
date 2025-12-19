@@ -100,94 +100,94 @@ const CHARACTER_ANIMATIONS = {
 // 🦝 Имена персонажей с локализацией
 const CHARACTER_NAMES = {
   1: {
-    en: 'Beginner Raccoon', 'zh-Hans': '新手浣熊', hi: 'शुरुआती रैकून', es: 'Mapache Principiante',
-    ar: 'راكون المبتدئ', pt: 'Guaxinim Iniciante', ru: 'Енот-новичок', kk: 'Бастауыш енот',
-    ja: '初心者アライグマ', fr: 'Raton Laveur Débutant', de: 'Anfänger-Waschbär', ko: '초보 너구리',
-    vi: 'Gấu Trúc Mới Bắt Đầu', tr: 'Başlangıç Rakunu', it: 'Procione Principiante', th: 'แรคคูนมือใหม่',
-    pl: 'Początkujący Szop', id: 'Rakun Pemula', nl: 'Beginner Wasbeer', cs: 'Začátečník Mýval',
-    el: 'Αρχάριος Ρακούν', hu: 'Kezdő Mosómedve', sv: 'Nybörjar Tvättbjörn', da: 'Begynder Vaskebjørn',
-    fi: 'Aloittelija Pesukarhu', no: 'Nybegynner Vaskebjørn'
+    en: 'Beginner', 'zh-Hans': '初学者', hi: 'शुरुआती', es: 'Principiante',
+    ar: 'مبتدئ', pt: 'Iniciante', ru: 'Новичок', kk: 'Бастауыш',
+    ja: '初心者', fr: 'Débutant', de: 'Anfänger', ko: '초보자',
+    vi: 'Người Mới Bắt Đầu', tr: 'Başlangıç', it: 'Principiante', th: 'ผู้เริ่มต้น',
+    pl: 'Początkujący', id: 'Pemula', nl: 'Beginner', cs: 'Začátečník',
+    el: 'Αρχάριος', hu: 'Kezdő', sv: 'Nybörjare', da: 'Begynder',
+    fi: 'Aloittelija', no: 'Nybegynner'
   },
   2: {
-    en: 'Walking Raccoon', 'zh-Hans': '行走浣熊', hi: 'चलने वाला रैकून', es: 'Mapache Caminante',
-    ar: 'راكون المشي', pt: 'Guaxinim Caminhante', ru: 'Шагающий енот', kk: 'Жүретін енот',
-    ja: '歩くアライグマ', fr: 'Raton Laveur Marcheur', de: 'Gehender Waschbär', ko: '걷는 너구리',
-    vi: 'Gấu Trúc Đi Bộ', tr: 'Yürüyen Rakun', it: 'Procione Camminatore', th: 'แรคคูนเดิน',
-    pl: 'Chodzący Szop', id: 'Rakun Berjalan', nl: 'Lopende Wasbeer', cs: 'Chodící Mýval',
-    el: 'Περπατητικός Ρακούν', hu: 'Sétáló Mosómedve', sv: 'Gående Tvättbjörn', da: 'Gående Vaskebjørn',
-    fi: 'Kävelevä Pesukarhu', no: 'Gående Vaskebjørn'
+    en: 'Walker', 'zh-Hans': '行者', hi: 'यात्री', es: 'Caminante',
+    ar: 'السائر', pt: 'Caminhante', ru: 'Ходок', kk: 'Жаяу жүруші',
+    ja: '歩行者', fr: 'Marcheur', de: 'Wanderer', ko: '보행자',
+    vi: 'Người Đi Bộ', tr: 'Yürüyücü', it: 'Camminatore', th: 'นักเดิน',
+    pl: 'Wędrowiec', id: 'Pejalan', nl: 'Wandelaar', cs: 'Chodec',
+    el: 'Περιπατητής', hu: 'Járó', sv: 'Vandrare', da: 'Vandrer',
+    fi: 'Kulkija', no: 'Vandrere'
   },
   3: {
-    en: 'Running Raccoon', 'zh-Hans': '奔跑浣熊', hi: 'दौड़ने वाला रैकून', es: 'Mapache Corredor',
-    ar: 'راكون العدو', pt: 'Guaxinim Corredor', ru: 'Бегущий енот', kk: 'Жүгіретін енот',
-    ja: '走るアライグマ', fr: 'Raton Laveur Coureur', de: 'Rennender Waschbär', ko: '달리는 너구리',
-    vi: 'Gấu Trúc Chạy', tr: 'Koşan Rakun', it: 'Procione Corridore', th: 'แรคคูนวิ่ง',
-    pl: 'Biegający Szop', id: 'Rakun Berlari', nl: 'Rennende Wasbeer', cs: 'Běžící Mýval',
-    el: 'Τρέχων Ρακούν', hu: 'Futó Mosómedve', sv: 'Springande Tvättbjörn', da: 'Løbende Vaskebjørn',
-    fi: 'Juokseva Pesukarhu', no: 'Løpende Vaskebjørn'
+    en: 'Explorer', 'zh-Hans': '探险者', hi: 'अन्वेषक', es: 'Explorador',
+    ar: 'المستكشف', pt: 'Explorador', ru: 'Исследователь', kk: 'Зерттеуші',
+    ja: '探検家', fr: 'Explorateur', de: 'Entdecker', ko: '탐험가',
+    vi: 'Nhà Thám Hiểm', tr: 'Kaşif', it: 'Esploratore', th: 'นักสำรวจ',
+    pl: 'Odkrywca', id: 'Penjelajah', nl: 'Ontdekker', cs: 'Průzkumník',
+    el: 'Εξερευνητής', hu: 'Felfedező', sv: 'Upptäckare', da: 'Opdagelsesrejsende',
+    fi: 'Tutkimusmatkailija', no: 'Oppdagelsesreisende'
   },
   4: {
-    en: 'Speedy Raccoon', 'zh-Hans': '快速浣熊', hi: 'तेज़ रैकून', es: 'Mapache Veloz',
-    ar: 'راكون سريع', pt: 'Guaxinim Veloz', ru: 'Быстрый енот', kk: 'Жылдам енот',
-    ja: 'スピーディーアライグマ', fr: 'Raton Laveur Rapide', de: 'Schneller Waschbär', ko: '빠른 너구리',
-    vi: 'Gấu Trúc Nhanh', tr: 'Hızlı Rakun', it: 'Procione Veloce', th: 'แรคคูนเร็ว',
-    pl: 'Szybki Szop', id: 'Rakun Cepat', nl: 'Snelle Wasbeer', cs: 'Rychlý Mýval',
-    el: 'Γρήγορος Ρακούν', hu: 'Gyors Mosómedve', sv: 'Snabb Tvättbjörn', da: 'Hurtig Vaskebjørn',
-    fi: 'Nopea Pesukarhu', no: 'Rask Vaskebjørn'
+    en: 'Defender', 'zh-Hans': '守护者', hi: 'रक्षक', es: 'Defensor',
+    ar: 'المدافع', pt: 'Defensor', ru: 'Защитник', kk: 'Қорғаушы',
+    ja: '守護者', fr: 'Défenseur', de: 'Verteidiger', ko: '수호자',
+    vi: 'Người Bảo Vệ', tr: 'Savunucu', it: 'Difensore', th: 'ผู้พิทักษ์',
+    pl: 'Obrońca', id: 'Pembela', nl: 'Verdediger', cs: 'Obránce',
+    el: 'Υπερασπιστής', hu: 'Védelmező', sv: 'Försvarare', da: 'Forsvarer',
+    fi: 'Puolustaja', no: 'Forsvarer'
   },
   5: {
-    en: 'Flying Raccoon', 'zh-Hans': '飞翔浣熊', hi: 'उड़ने वाला रैकून', es: 'Mapache Volador',
-    ar: 'راكون طائر', pt: 'Guaxinim Voador', ru: 'Летящий енот', kk: 'Ұшатын енот',
-    ja: '飛ぶアライグマ', fr: 'Raton Laveur Volant', de: 'Fliegender Waschbär', ko: '나는 너구리',
-    vi: 'Gấu Trúc Bay', tr: 'Uçan Rakun', it: 'Procione Volante', th: 'แรคคูนบิน',
-    pl: 'Latający Szop', id: 'Rakun Terbang', nl: 'Vliegende Wasbeer', cs: 'Létající Mýval',
-    el: 'Ιπτάμενος Ρακούν', hu: 'Repülő Mosómedve', sv: 'Flygande Tvättbjörn', da: 'Flyvende Vaskebjørn',
-    fi: 'Lentävä Pesukarhu', no: 'Flyvende Vaskebjørn'
+    en: 'Guardian', 'zh-Hans': '守卫', hi: 'संरक्षक', es: 'Guardián',
+    ar: 'الحارس', pt: 'Guardião', ru: 'Страж', kk: 'Күзетші',
+    ja: 'ガーディアン', fr: 'Gardien', de: 'Wächter', ko: '가디언',
+    vi: 'Người Giám Hộ', tr: 'Muhafız', it: 'Guardiano', th: 'ผู้ปกป้อง',
+    pl: 'Strażnik', id: 'Penjaga', nl: 'Bewaker', cs: 'Strážce',
+    el: 'Φύλακας', hu: 'Őrző', sv: 'Väktare', da: 'Vogter',
+    fi: 'Vartija', no: 'Vokter'
   },
   6: {
-    en: 'Super Raccoon', 'zh-Hans': '超级浣熊', hi: 'सुपर रैकून', es: 'Súper Mapache',
-    ar: 'راكون خارق', pt: 'Super Guaxinim', ru: 'Супер-енот', kk: 'Супер енот',
-    ja: 'スーパーアライグマ', fr: 'Super Raton Laveur', de: 'Super-Waschbär', ko: '슈퍼 너구리',
-    vi: 'Siêu Gấu Trúc', tr: 'Süper Rakun', it: 'Super Procione', th: 'ซูเปอร์แรคคูน',
-    pl: 'Super Szop', id: 'Rakun Super', nl: 'Super Wasbeer', cs: 'Super Mýval',
-    el: 'Σούπερ Ρακούν', hu: 'Szuper Mosómedve', sv: 'Super Tvättbjörn', da: 'Super Vaskebjørn',
-    fi: 'Super Pesukarhu', no: 'Super Vaskebjørn'
+    en: 'Wanderer', 'zh-Hans': '流浪者', hi: 'भटकने वाला', es: 'Vagabundo',
+    ar: 'المتجول', pt: 'Andarilho', ru: 'Странник', kk: 'Қаңғыбас',
+    ja: '放浪者', fr: 'Vagabond', de: 'Wanderer', ko: '방랑자',
+    vi: 'Kẻ Lang Thang', tr: 'Gezgin', it: 'Vagabondo', th: 'นักเดินทาง',
+    pl: 'Wędrowiec', id: 'Pengembara', nl: 'Zwerver', cs: 'Tulák',
+    el: 'Περιπλανώμενος', hu: 'Vándor', sv: 'Vandrare', da: 'Vandrer',
+    fi: 'Vaeltaja', no: 'Vandrer'
   },
   7: {
-    en: 'Mega Raccoon', 'zh-Hans': '巨型浣熊', hi: 'मेगा रैकून', es: 'Mega Mapache',
-    ar: 'راكون ضخم', pt: 'Mega Guaxinim', ru: 'Мега-енот', kk: 'Мега енот',
-    ja: 'メガアライグマ', fr: 'Méga Raton Laveur', de: 'Mega-Waschbär', ko: '메가 너구리',
-    vi: 'Mega Gấu Trúc', tr: 'Mega Rakun', it: 'Mega Procione', th: 'เมก้าแรคคูน',
-    pl: 'Mega Szop', id: 'Rakun Mega', nl: 'Mega Wasbeer', cs: 'Mega Mýval',
-    el: 'Μέγα Ρακούν', hu: 'Mega Mosómedve', sv: 'Mega Tvättbjörn', da: 'Mega Vaskebjørn',
-    fi: 'Mega Pesukarhu', no: 'Mega Vaskebjørn'
+    en: 'Pathfinder', 'zh-Hans': '开路者', hi: 'मार्गदर्शक', es: 'Explorador',
+    ar: 'مكتشف الطريق', pt: 'Desbravador', ru: 'Следопыт', kk: 'Жол табушы',
+    ja: 'パスファインダー', fr: 'Éclaireur', de: 'Pfadfinder', ko: '길잡이',
+    vi: 'Người Tìm Đường', tr: 'Yol Bulucu', it: 'Battistrada', th: 'ผู้นำทาง',
+    pl: 'Tropiciel', id: 'Pencari Jalan', nl: 'Wegvinder', cs: 'Stopař',
+    el: 'Οδοποιός', hu: 'Útkereső', sv: 'Vägvisare', da: 'Vejfinder',
+    fi: 'Polunraivaaja', no: 'Veifinner'
   },
   8: {
-    en: 'Ultra Raccoon', 'zh-Hans': '终极浣熊', hi: 'अल्ट्रा रैकून', es: 'Ultra Mapache',
-    ar: 'راكون فائق', pt: 'Ultra Guaxinim', ru: 'Ультра-енот', kk: 'Ультра енот',
-    ja: 'ウルトラアライグマ', fr: 'Ultra Raton Laveur', de: 'Ultra-Waschbär', ko: '울트라 너구리',
-    vi: 'Ultra Gấu Trúc', tr: 'Ultra Rakun', it: 'Ultra Procione', th: 'อัลตร้าแรคคูน',
-    pl: 'Ultra Szop', id: 'Rakun Ultra', nl: 'Ultra Wasbeer', cs: 'Ultra Mýval',
-    el: 'Υπερ Ρακούν', hu: 'Ultra Mosómedve', sv: 'Ultra Tvättbjörn', da: 'Ultra Vaskebjørn',
-    fi: 'Ultra Pesukarhu', no: 'Ultra Vaskebjørn'
+    en: 'Champion', 'zh-Hans': '冠军', hi: 'चैंपियन', es: 'Campeón',
+    ar: 'البطل', pt: 'Campeão', ru: 'Чемпион', kk: 'Чемпион',
+    ja: 'チャンピオン', fr: 'Champion', de: 'Champion', ko: '챔피언',
+    vi: 'Nhà Vô Địch', tr: 'Şampiyon', it: 'Campione', th: 'แชมป์เปี้ยน',
+    pl: 'Mistrz', id: 'Juara', nl: 'Kampioen', cs: 'Šampion',
+    el: 'Πρωταθλητής', hu: 'Bajnok', sv: 'Mästare', da: 'Mester',
+    fi: 'Mestari', no: 'Mester'
   },
   9: {
-    en: 'Legendary Raccoon', 'zh-Hans': '传奇浣熊', hi: 'पौराणिक रैकून', es: 'Mapache Legendario',
-    ar: 'راكون أسطوري', pt: 'Guaxinim Lendário', ru: 'Легендарный енот', kk: 'Аңызды енот',
-    ja: 'レジェンダリーアライグマ', fr: 'Raton Laveur Légendaire', de: 'Legendärer Waschbär', ko: '전설의 너구리',
-    vi: 'Gấu Trúc Huyền Thoại', tr: 'Efsanevi Rakun', it: 'Procione Leggendario', th: 'แรคคูนในตำนาน',
-    pl: 'Legendarny Szop', id: 'Rakun Legendaris', nl: 'Legendarische Wasbeer', cs: 'Legendární Mýval',
-    el: 'Θρυλικός Ρακούν', hu: 'Legendás Mosómedve', sv: 'Legendarisk Tvättbjörn', da: 'Legendarisk Vaskebjørn',
-    fi: 'Legendaarinen Pesukarhu', no: 'Legendarisk Vaskebjørn'
+    en: 'Veteran', 'zh-Hans': '老兵', hi: 'दिग्गज', es: 'Veterano',
+    ar: 'المخضرم', pt: 'Veterano', ru: 'Ветеран', kk: 'Ардагер',
+    ja: 'ベテラン', fr: 'Vétéran', de: 'Veteran', ko: '베테랑',
+    vi: 'Cựu Chiến Binh', tr: 'Kıdemli', it: 'Veterano', th: 'ทหารผ่านศึก',
+    pl: 'Weteran', id: 'Veteran', nl: 'Veteraan', cs: 'Veterán',
+    el: 'Βετεράνος', hu: 'Veterán', sv: 'Veteran', da: 'Veteran',
+    fi: 'Veteraani', no: 'Veteran'
   },
   10: {
-    en: 'God Raccoon', 'zh-Hans': '神级浣熊', hi: 'देव रैकून', es: 'Mapache Dios',
-    ar: 'راكون إله', pt: 'Guaxinim Deus', ru: 'Енот-бог', kk: 'Құдай енот',
-    ja: '神アライグマ', fr: 'Raton Laveur Divin', de: 'Gott-Waschbär', ko: '신 너구리',
-    vi: 'Gấu Trúc Thần Thánh', tr: 'Tanrı Rakun', it: 'Procione Divino', th: 'แรคคูนเทพเจ้า',
-    pl: 'Boski Szop', id: 'Rakun Dewa', nl: 'God Wasbeer', cs: 'Bůh Mýval',
-    el: 'Θεός Ρακούν', hu: 'Isten Mosómedve', sv: 'Gud Tvättbjörn', da: 'Gud Vaskebjørn',
-    fi: 'Jumala Pesukarhu', no: 'Gud Vaskebjørn'
+    en: 'Hero', 'zh-Hans': '英雄', hi: 'नायक', es: 'Héroe',
+    ar: 'البطل', pt: 'Herói', ru: 'Герой', kk: 'Батыр',
+    ja: 'ヒーロー', fr: 'Héros', de: 'Held', ko: '영웅',
+    vi: 'Anh Hùng', tr: 'Kahraman', it: 'Eroe', th: 'วีรบุรุษ',
+    pl: 'Bohater', id: 'Pahlawan', nl: 'Held', cs: 'Hrdina',
+    el: 'Ήρωας', hu: 'Hős', sv: 'Hjälte', da: 'Helt',
+    fi: 'Sankari', no: 'Helt'
   }
 };
 
