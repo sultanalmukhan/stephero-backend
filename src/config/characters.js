@@ -191,8 +191,6 @@ const CHARACTER_NAMES = {
   }
 };
 
-
-
 // 📖 История Level 1 (базовая) - все 26 языков
 const LEVEL_1_STORY = {
   en: 'After escaping the wolf raid, the young raccoon surveys the ruins of his home. He finds a trail of pawprints leading north—the wolves took survivors. He makes a promise: he will free them all.',
@@ -223,8 +221,35 @@ const LEVEL_1_STORY = {
   no: 'Etter å ha rømt fra ulveangrepet, undersøker den unge vaskebjørnen ruinene av hjemmet sitt. Han finner et spor av poteavtrykk som leder nordover—ulvene tok med seg overlevende. Han gir et løfte: han skal befri dem alle.'
 };
 
-// 📖 Истории для остальных уровней (пока копии Level 1)
-const LEVEL_2_STORY = LEVEL_1_STORY;
+const LEVEL_2_STORY = {
+  en: 'Featherhill is attacked, its residents hiding in the old grain mill. Our raccoon helps them escape through tunnels beneath the fields.\nThe villagers tell him: "You\'ll need these. The road ahead is long."',
+  'zh-Hans': '羽丘遭到袭击，居民们躲在旧谷仓里。我们的浣熊帮助他们通过田地下的隧道逃脱。\n村民们告诉他："你会需要这些的。前方的路还很长。"',
+  hi: 'फेदरहिल पर हमला होता है, इसके निवासी पुरानी अनाज की चक्की में छुपे हुए हैं। हमारा रैकून उन्हें खेतों के नीचे की सुरंगों से भागने में मदद करता है।\nगांव वाले उससे कहते हैं: "तुम्हें इनकी जरूरत होगी। आगे का रास्ता लंबा है।"',
+  es: 'Featherhill es atacada, sus residentes se esconden en el viejo molino de grano. Nuestro mapache les ayuda a escapar por túneles bajo los campos.\nLos aldeanos le dicen: "Necesitarás esto. El camino por delante es largo."',
+  ar: 'تتعرض فيذرهيل للهجوم، ويختبئ سكانها في طاحونة الحبوب القديمة. يساعدهم راكوننا على الهروب عبر الأنفاق تحت الحقول.\nيخبره القرويون: "ستحتاج إلى هذه. الطريق أمامك طويل."',
+  pt: 'Featherhill é atacada, seus moradores se escondem no velho moinho de grãos. Nosso guaxinim os ajuda a escapar por túneis sob os campos.\nOs aldeões lhe dizem: "Você vai precisar disso. A estrada à frente é longa."',
+  ru: 'На Перьевой холм нападают, жители прячутся на старой мельнице. Наш енот помогает им сбежать через туннели под полями.\nЖители говорят ему: "Они тебе понадобятся. Дорога впереди долгая."',
+  kk: 'Қауырсын төбесіне шабуыл жасалады, тұрғындар ескі диірменде жасырынады. Біздің енот оларға егістіктер астындағы туннельдер арқылы қашуға көмектеседі.\nАуыл тұрғындары оған: "Бұлар саған керек болады. Алдағы жол ұзақ." - дейді.',
+  ja: 'フェザーヒルが襲撃され、住民は古い穀物倉庫に隠れている。アライグマは畑の下のトンネルを通って彼らの脱出を助ける。\n村人たちは言う：「これが必要になるだろう。前途は長い。」',
+  fr: 'Featherhill est attaqué, ses résidents se cachent dans le vieux moulin à grain. Notre raton laveur les aide à s\'échapper par des tunnels sous les champs.\nLes villageois lui disent : "Tu en auras besoin. La route est longue devant toi."',
+  de: 'Featherhill wird angegriffen, seine Bewohner verstecken sich in der alten Getreidemühle. Unser Waschbär hilft ihnen, durch Tunnel unter den Feldern zu entkommen.\nDie Dorfbewohner sagen ihm: "Du wirst diese brauchen. Der Weg vor dir ist lang."',
+  ko: '페더힐이 공격받고, 주민들은 오래된 곡물 방앗간에 숨어 있다. 우리 너구리는 들판 아래 터널을 통해 그들이 탈출하도록 돕는다.\n마을 사람들이 말한다: "이게 필요할 거야. 앞길이 멀어."',
+  vi: 'Featherhill bị tấn công, cư dân ẩn náu trong xưởng xay thóc cũ. Chú gấu trúc giúp họ trốn thoát qua các đường hầm dưới cánh đồng.\nDân làng nói với chú: "Cậu sẽ cần những thứ này. Con đường phía trước còn dài."',
+  tr: 'Featherhill\'e saldırı düzenlenir, sakinleri eski tahıl değirmeninde saklanır. Rakunumuz onların tarlalar altındaki tünellerden kaçmasına yardım eder.\nKöylüler ona der ki: "Bunlara ihtiyacın olacak. Önündeki yol uzun."',
+  it: 'Featherhill viene attaccata, i suoi residenti si nascondono nel vecchio mulino. Il nostro procione li aiuta a fuggire attraverso i tunnel sotto i campi.\nI paesani gli dicono: "Ti serviranno. La strada davanti è lunga."',
+  th: 'เฟเธอร์ฮิลล์ถูกโจมตี ผู้อยู่อาศัยซ่อนตัวในโรงสีเก่า แรคคูนของเราช่วยพวกเขาหนีผ่านอุโมงค์ใต้ทุ่งนา\nชาวบ้านบอกเขา: "คุณจะต้องใช้สิ่งเหล่านี้ ทางข้างหน้ายังยาวไกล"',
+  pl: 'Featherhill jest atakowana, mieszkańcy ukrywają się w starym młynie zbożowym. Nasz szop pomaga im uciec tunelami pod polami.\nMieszkańcy mówią mu: "Będziesz ich potrzebował. Droga przed tobą jest długa."',
+  id: 'Featherhill diserang, penduduknya bersembunyi di penggilingan gandum tua. Rakun kita membantu mereka melarikan diri melalui terowongan di bawah ladang.\nPara penduduk desa memberitahunya: "Kamu akan membutuhkan ini. Jalan di depan masih panjang."',
+  nl: 'Featherhill wordt aangevallen, de bewoners verbergen zich in de oude graanmolen. Onze wasbeer helpt ze ontsnappen door tunnels onder de velden.\nDe dorpelingen zeggen tegen hem: "Je hebt deze nodig. De weg die voor je ligt is lang."',
+  cs: 'Featherhill je napaden, obyvatelé se skrývají ve starém mlýně na zrní. Náš mýval jim pomáhá uniknout tunely pod poli.\nVesničané mu říkají: "Budeš je potřebovat. Cesta před tebou je dlouhá."',
+  el: 'Το Featherhill δέχεται επίθεση, οι κάτοικοί του κρύβονται στον παλιό μύλο σιταριού. Ο ρακούν μας τους βοηθά να ξεφύγουν μέσω σηράγγων κάτω από τα χωράφια.\nΟι χωρικοί του λένε: "Θα τα χρειαστείς. Ο δρόμος μπροστά είναι μακρύς."',
+  hu: 'Featherhillt megtámadják, lakói az öreg gabonafeldolgozóban bujkálnak. Mosómedvénk segít nekik megszökni az alagutakon keresztül a földek alatt.\nA falusiak mondják neki: "Ezekre szükséged lesz. A előtted álló út hosszú."',
+  sv: 'Featherhill attackeras, invånarna gömmer sig i den gamla kvarnen. Vår tvättbjörn hjälper dem att fly genom tunnlar under fälten.\nByborna säger till honom: "Du kommer behöva dessa. Vägen framför dig är lång."',
+  da: 'Featherhill angribes, dets beboere gemmer sig i den gamle kornmølle. Vores vaskebjørn hjælper dem med at flygte gennem tunneler under markerne.\nLandsbyboerne fortæller ham: "Du får brug for disse. Vejen forude er lang."',
+  fi: 'Featherhillia hyökätään, asukkaat piiloutuvat vanhaan jyvämylliin. Pesukarhumme auttaa heitä pakenemaan peltojen alla olevien tunnelien läpi.\nKyläläiset sanovat hänelle: "Tulet tarvitsemaan näitä. Edessä oleva tie on pitkä."',
+  no: 'Featherhill blir angrepet, innbyggerne gjemmer seg i den gamle kornmølla. Vaskebjørnen vår hjelper dem å rømme gjennom tunneler under åkrene.\nLandsbyboerne forteller ham: "Du kommer til å trenge disse. Veien foran deg er lang."'
+};
+
 const LEVEL_3_STORY = LEVEL_1_STORY;
 const LEVEL_4_STORY = LEVEL_1_STORY;
 const LEVEL_5_STORY = LEVEL_1_STORY;
