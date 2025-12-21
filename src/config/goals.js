@@ -5,7 +5,7 @@
 const GOALS = [
   {
     level: 1,
-    title: "Beginner",
+    title: "Easy",
     description: "Start your journey with a comfortable daily goal",
     steps: 7000,
     distance_km: 5.3,
@@ -16,7 +16,7 @@ const GOALS = [
   },
   {
     level: 2,
-    title: "Walker",
+    title: "Steady",
     description: "Challenge yourself with a moderate daily target",
     steps: 8500,
     distance_km: 6.4,
@@ -27,7 +27,7 @@ const GOALS = [
   },
   {
     level: 3,
-    title: "Athlete",
+    title: "Hard",
     description: "Push your limits with the recommended daily goal",
     steps: 10000,
     distance_km: 7.5,
@@ -38,7 +38,7 @@ const GOALS = [
   },
   {
     level: 4,
-    title: "Champion",
+    title: "Hero",
     description: "Master the ultimate daily challenge",
     steps: 12000,
     distance_km: 9.0,
