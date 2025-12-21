@@ -22,7 +22,7 @@ const GOALS = [
     level: 2,
     title: {
       en: "Steady",
-      kk: "Орташа",
+      kk: "Тұрақты",
       ru: "Стабильно"
     },
     description: "Challenge yourself with a moderate daily target",
@@ -52,7 +52,7 @@ const GOALS = [
     level: 4,
     title: {
       en: "Hero",
-      kk: "Батыр",
+      kk: "Қаһарман",
       ru: "Герой"
     },
     description: "Master the ultimate daily challenge",
