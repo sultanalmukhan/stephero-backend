@@ -5,7 +5,11 @@
 const GOALS = [
   {
     level: 1,
-    title: "Easy",
+    title: {
+      en: "Easy",
+      kk: "Оңай",
+      ru: "Легко"
+    },
     description: "Start your journey with a comfortable daily goal",
     steps: 7000,
     distance_km: 5.3,
@@ -16,7 +20,11 @@ const GOALS = [
   },
   {
     level: 2,
-    title: "Steady",
+    title: {
+      en: "Steady",
+      kk: "Орташа",
+      ru: "Стабильно"
+    },
     description: "Challenge yourself with a moderate daily target",
     steps: 8500,
     distance_km: 6.4,
@@ -27,7 +35,11 @@ const GOALS = [
   },
   {
     level: 3,
-    title: "Hard",
+    title: {
+      en: "Hard",
+      kk: "Қиын",
+      ru: "Сложно"
+    },
     description: "Push your limits with the recommended daily goal",
     steps: 10000,
     distance_km: 7.5,
@@ -38,7 +50,11 @@ const GOALS = [
   },
   {
     level: 4,
-    title: "Hero",
+    title: {
+      en: "Hero",
+      kk: "Батыр",
+      ru: "Герой"
+    },
     description: "Master the ultimate daily challenge",
     steps: 12000,
     distance_km: 9.0,
@@ -63,17 +79,37 @@ const GOAL_CONFIG = GOALS.reduce((acc, goal) => {
 }, {});
 
 /**
- * Get goal by level number
+ * Get goal by level number with localized title
+ * @param {number} level - Goal level (1-4)
+ * @param {string} language - Language code (en, kk, ru)
+ * @returns {Object|null} Goal object with localized title
  */
-function getGoalByLevel(level) {
-  return GOALS.find(g => g.level === level) || null;
+function getGoalByLevel(level, language = 'en') {
+  const goal = GOALS.find(g => g.level === level);
+  if (!goal) return null;
+  
+  // Determine language, default to 'en' if not supported
+  const lang = ['en', 'kk', 'ru'].includes(language) ? language : 'en';
+  
+  return {
+    ...goal,
+    title: goal.title[lang]
+  };
 }
 
 /**
- * Get all goals
+ * Get all goals with localized titles
+ * @param {string} language - Language code (en, kk, ru)
+ * @returns {Array} Array of goals with localized titles
  */
-function getAllGoals() {
-  return GOALS;
+function getAllGoals(language = 'en') {
+  // Determine language, default to 'en' if not supported
+  const lang = ['en', 'kk', 'ru'].includes(language) ? language : 'en';
+  
+  return GOALS.map(goal => ({
+    ...goal,
+    title: goal.title[lang]
+  }));
 }
 
 module.exports = {
