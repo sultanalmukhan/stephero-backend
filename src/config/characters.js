@@ -97,98 +97,18 @@ const CHARACTER_ANIMATIONS = {
   },
 };
 
-// 🦝 Имена персонажей с локализацией
+// 🦝 Имена персонажей (только на английском)
 const CHARACTER_NAMES = {
-  1: {
-    en: 'Beginner', 'zh-Hans': '初学者', hi: 'शुरुआती', es: 'Principiante',
-    ar: 'مبتدئ', pt: 'Iniciante', ru: 'Новичок', kk: 'Бастауыш',
-    ja: '初心者', fr: 'Débutant', de: 'Anfänger', ko: '초보자',
-    vi: 'Người Mới Bắt Đầu', tr: 'Başlangıç', it: 'Principiante', th: 'ผู้เริ่มต้น',
-    pl: 'Początkujący', id: 'Pemula', nl: 'Beginner', cs: 'Začátečník',
-    el: 'Αρχάριος', hu: 'Kezdő', sv: 'Nybörjare', da: 'Begynder',
-    fi: 'Aloittelija', no: 'Nybegynner'
-  },
-  2: {
-    en: 'Walker', 'zh-Hans': '行者', hi: 'यात्री', es: 'Caminante',
-    ar: 'السائر', pt: 'Caminhante', ru: 'Ходок', kk: 'Жаяу жүруші',
-    ja: '歩行者', fr: 'Marcheur', de: 'Wanderer', ko: '보행자',
-    vi: 'Người Đi Bộ', tr: 'Yürüyücü', it: 'Camminatore', th: 'นักเดิน',
-    pl: 'Wędrowiec', id: 'Pejalan', nl: 'Wandelaar', cs: 'Chodec',
-    el: 'Περιπατητής', hu: 'Járó', sv: 'Vandrare', da: 'Vandrer',
-    fi: 'Kulkija', no: 'Vandrere'
-  },
-  3: {
-    en: 'Explorer', 'zh-Hans': '探险者', hi: 'अन्वेषक', es: 'Explorador',
-    ar: 'المستكشف', pt: 'Explorador', ru: 'Исследователь', kk: 'Зерттеуші',
-    ja: '探検家', fr: 'Explorateur', de: 'Entdecker', ko: '탐험가',
-    vi: 'Nhà Thám Hiểm', tr: 'Kaşif', it: 'Esploratore', th: 'นักสำรวจ',
-    pl: 'Odkrywca', id: 'Penjelajah', nl: 'Ontdekker', cs: 'Průzkumník',
-    el: 'Εξερευνητής', hu: 'Felfedező', sv: 'Upptäckare', da: 'Opdagelsesrejsende',
-    fi: 'Tutkimusmatkailija', no: 'Oppdagelsesreisende'
-  },
-  4: {
-    en: 'Defender', 'zh-Hans': '守护者', hi: 'रक्षक', es: 'Defensor',
-    ar: 'المدافع', pt: 'Defensor', ru: 'Защитник', kk: 'Қорғаушы',
-    ja: '守護者', fr: 'Défenseur', de: 'Verteidiger', ko: '수호자',
-    vi: 'Người Bảo Vệ', tr: 'Savunucu', it: 'Difensore', th: 'ผู้พิทักษ์',
-    pl: 'Obrońca', id: 'Pembela', nl: 'Verdediger', cs: 'Obránce',
-    el: 'Υπερασπιστής', hu: 'Védelmező', sv: 'Försvarare', da: 'Forsvarer',
-    fi: 'Puolustaja', no: 'Forsvarer'
-  },
-  5: {
-    en: 'Guardian', 'zh-Hans': '守卫', hi: 'संरक्षक', es: 'Guardián',
-    ar: 'الحارس', pt: 'Guardião', ru: 'Страж', kk: 'Күзетші',
-    ja: 'ガーディアン', fr: 'Gardien', de: 'Wächter', ko: '가디언',
-    vi: 'Người Giám Hộ', tr: 'Muhafız', it: 'Guardiano', th: 'ผู้ปกป้อง',
-    pl: 'Strażnik', id: 'Penjaga', nl: 'Bewaker', cs: 'Strážce',
-    el: 'Φύλακας', hu: 'Őrző', sv: 'Väktare', da: 'Vogter',
-    fi: 'Vartija', no: 'Vokter'
-  },
-  6: {
-    en: 'Wanderer', 'zh-Hans': '流浪者', hi: 'भटकने वाला', es: 'Vagabundo',
-    ar: 'المتجول', pt: 'Andarilho', ru: 'Странник', kk: 'Қаңғыбас',
-    ja: '放浪者', fr: 'Vagabond', de: 'Wanderer', ko: '방랑자',
-    vi: 'Kẻ Lang Thang', tr: 'Gezgin', it: 'Vagabondo', th: 'นักเดินทาง',
-    pl: 'Wędrowiec', id: 'Pengembara', nl: 'Zwerver', cs: 'Tulák',
-    el: 'Περιπλανώμενος', hu: 'Vándor', sv: 'Vandrare', da: 'Vandrer',
-    fi: 'Vaeltaja', no: 'Vandrer'
-  },
-  7: {
-    en: 'Pathfinder', 'zh-Hans': '开路者', hi: 'मार्गदर्शक', es: 'Explorador',
-    ar: 'مكتشف الطريق', pt: 'Desbravador', ru: 'Следопыт', kk: 'Жол табушы',
-    ja: 'パスファインダー', fr: 'Éclaireur', de: 'Pfadfinder', ko: '길잡이',
-    vi: 'Người Tìm Đường', tr: 'Yol Bulucu', it: 'Battistrada', th: 'ผู้นำทาง',
-    pl: 'Tropiciel', id: 'Pencari Jalan', nl: 'Wegvinder', cs: 'Stopař',
-    el: 'Οδοποιός', hu: 'Útkereső', sv: 'Vägvisare', da: 'Vejfinder',
-    fi: 'Polunraivaaja', no: 'Veifinner'
-  },
-  8: {
-    en: 'Champion', 'zh-Hans': '冠军', hi: 'चैंपियन', es: 'Campeón',
-    ar: 'البطل', pt: 'Campeão', ru: 'Чемпион', kk: 'Чемпион',
-    ja: 'チャンピオン', fr: 'Champion', de: 'Champion', ko: '챔피언',
-    vi: 'Nhà Vô Địch', tr: 'Şampiyon', it: 'Campione', th: 'แชมป์เปี้ยน',
-    pl: 'Mistrz', id: 'Juara', nl: 'Kampioen', cs: 'Šampion',
-    el: 'Πρωταθλητής', hu: 'Bajnok', sv: 'Mästare', da: 'Mester',
-    fi: 'Mestari', no: 'Mester'
-  },
-  9: {
-    en: 'Veteran', 'zh-Hans': '老兵', hi: 'दिग्गज', es: 'Veterano',
-    ar: 'المخضرم', pt: 'Veterano', ru: 'Ветеран', kk: 'Ардагер',
-    ja: 'ベテラン', fr: 'Vétéran', de: 'Veteran', ko: '베테랑',
-    vi: 'Cựu Chiến Binh', tr: 'Kıdemli', it: 'Veterano', th: 'ทหารผ่านศึก',
-    pl: 'Weteran', id: 'Veteran', nl: 'Veteraan', cs: 'Veterán',
-    el: 'Βετεράνος', hu: 'Veterán', sv: 'Veteran', da: 'Veteran',
-    fi: 'Veteraani', no: 'Veteran'
-  },
-  10: {
-    en: 'Hero', 'zh-Hans': '英雄', hi: 'नायक', es: 'Héroe',
-    ar: 'البطل', pt: 'Herói', ru: 'Герой', kk: 'Батыр',
-    ja: 'ヒーロー', fr: 'Héros', de: 'Held', ko: '영웅',
-    vi: 'Anh Hùng', tr: 'Kahraman', it: 'Eroe', th: 'วีรบุรุษ',
-    pl: 'Bohater', id: 'Pahlawan', nl: 'Held', cs: 'Hrdina',
-    el: 'Ήρωας', hu: 'Hős', sv: 'Hjälte', da: 'Helt',
-    fi: 'Sankari', no: 'Helt'
-  }
+  1: 'Beginner',
+  2: 'Walker',
+  3: 'Explorer',
+  4: 'Defender',
+  5: 'Guardian',
+  6: 'Wanderer',
+  7: 'Pathfinder',
+  8: 'Champion',
+  9: 'Veteran',
+  10: 'Hero'
 };
 
 // 📖 История Level 1 (базовая) - все 26 языков
@@ -546,34 +466,22 @@ function getCharacterData(level, progressPercent = 0, language = 'en') {
   const defaultLevel = 1;
   const actualLevel = level || defaultLevel;
   
-  // Определяем mood на основе прогресса
   const mood = getMoodByProgress(progressPercent);
-  
-  // Получаем анимацию для этого уровня и mood
   const animations = CHARACTER_ANIMATIONS[actualLevel] || CHARACTER_ANIMATIONS[defaultLevel];
   const animationUrl = animations[mood] || animations.mood_1;
   
-  // Получаем переводы
-  const names = CHARACTER_NAMES[actualLevel] || CHARACTER_NAMES[defaultLevel];
   const stories = CHARACTER_STORIES[actualLevel] || CHARACTER_STORIES[defaultLevel];
   
   return {
     image_url: CHARACTER_IMAGES_BLACK[actualLevel] || CHARACTER_IMAGES_BLACK[defaultLevel],
     animation_url: animationUrl,
-    name: names[language] || names.en,
+    name: CHARACTER_NAMES[actualLevel] || CHARACTER_NAMES[defaultLevel], // Теперь просто строка
     story: stories[language] || stories.en,
     level: actualLevel,
     current_mood: mood
   };
 }
 
-/**
- * Получить список всех персонажей с учетом прогресса пользователя
- * @param {number} userLevel - Текущий уровень пользователя
- * @param {number} userTotalXP - Общий XP пользователя
- * @param {string} language - Код языка
- * @returns {Array} Массив персонажей с их статусом
- */
 function getCharactersList(userLevel, userTotalXP, language = 'en') {
   const characters = [];
   
@@ -581,19 +489,16 @@ function getCharactersList(userLevel, userTotalXP, language = 'en') {
     const isClosed = level > userLevel;
     const xpRequired = LEVEL_XP_REQUIREMENTS[level];
     
-    // Вычисляем XP до разблокировки
     let xpToUnlock = 0;
     if (isClosed) {
       xpToUnlock = Math.max(0, xpRequired - userTotalXP);
     }
     
-    // Получаем переводы
-    const names = CHARACTER_NAMES[level];
     const stories = CHARACTER_STORIES[level];
     
     characters.push({
       level: level,
-      name: names[language] || names.en,
+      name: CHARACTER_NAMES[level], // Теперь просто строка
       story: stories[language] || stories.en,
       isClosed: isClosed,
       imageLinkBlack: CHARACTER_IMAGES_BLACK[level],
